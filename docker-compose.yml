@@ -1,0 +1,28 @@
+services:
+  haskell-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: haskell-dev-container
+    volumes:
+      # Mount your project directory to /workspace in the container
+      - ./workspace:/workspace
+      # Persist cabal and ghcup data
+      - haskell-cabal-data:/root/.cabal
+      - haskell-ghcup-data:/root/.ghcup
+      # Persist stack data
+      - haskell-stack-data:/root/.stack
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+      - "3000:3000"
+    environment:
+      - TERM=xterm-256color
+
+volumes:
+  haskell-cabal-data:
+  haskell-ghcup-data:
+  haskell-stack-data:
