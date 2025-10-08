@@ -3,7 +3,7 @@
 #+OPTIONS: tex t
 #+OPTIONS: timestamp:nil
 #+OPTIONS: org-confirm-babel-evaluate nil
-#+REVEAL_THEME: white
+#+REVEAL_THEME: black
 #+REVEAL_HLEVEL: 1
 #+REVEAL_ROOT: file:///home/rodrigo/reveal.js
 
@@ -328,10 +328,10 @@ data Structure
 
 - Exemplos de representação: cabeçalhos e parágrafos.
 
-#+begin_src org
-* BCC328 - Construção de compiladores I
+#+begin_src
+ * Cabeçalho
 
-Revisão de Haskell
+   Revisão de Haskell
 #+end_src
 
 ** De Markdown para HTML
@@ -341,7 +341,7 @@ Revisão de Haskell
 #+begin_src haskell
 example1 :: Document
 example1 =
-  [ Heading 1 "BCC328 - Construção de compiladores I"
+  [ Heading 1 "Cabeçalho"
   , Paragraph "Revisão de Haskell"
   ]
 #+end_src
@@ -408,25 +408,6 @@ translateStructure (AST.UnorderedList ds)
   = HTML.ul_ $ map (HTML.p_ . HTML.txt_) ds
 translateStructure (AST.CodeBlock ds)
   = HTML.code_ (unlines ds)
-#+end_src
-
-* Testes
-
-** Testes
-
-- Infraestrutura de golden tests disponível.
-
-- Golden tests
-  - Entradas disponíveis como arquivos.
-  - Saídas esperadas disponíveis como arquivos.
-
-** Testes
-
-- Execução dos testes
-  - Após iniciar o ~docker~, execute:
-
-#+begin_src
-cabal new-test
 #+end_src
 
 * Concluindo

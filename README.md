@@ -1,5 +1,7 @@
 # BCC328 - Construção de Compiladores I
 
+## Introdução
+
 Este repositório contém a configuração básica do ambiente
 de desenvolvimento para a disciplina BCC328 - Construção
 de compiladores I. Este ambiente provê as seguintes
@@ -17,4 +19,32 @@ ferramentas:
 
 - `qemu`: Emulador de arquitetura RISC-V.
 
+## Acessando o ambiente 
 
+Para utilizar o ambiente, execute os seguintes comandos na mesma pasta que 
+estão os arquivos `Dockerfile` e `docker-compose.yml`:
+
+Na primeira execução do ambiente execute com a flag `--build` para criação 
+da imagem.
+
+```
+docker-compose up -d --build 
+```
+```
+```
+
+Após a criação da imagem, você poderá inicializar o ambiente usando:
+
+```
+docker-compose up -d 
+```
+
+Depois de inicializado, acesso o shell da imagem com o comando:
+
+```
+docker-compose exec haskell-dev bash 
+```
+```
+
+
+```
