@@ -3,7 +3,7 @@
 #+OPTIONS: tex t
 #+OPTIONS: timestamp:nil
 #+OPTIONS: org-confirm-babel-evaluate nil
-#+REVEAL_THEME: white
+#+REVEAL_THEME: black
 #+REVEAL_HLEVEL: 1
 #+REVEAL_ROOT: file:///home/rodrigo/reveal.js
 
