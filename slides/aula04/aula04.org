@@ -1,0 +1,653 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: black
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Monad Transformers
+#+Author: Construção de compiladores I
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar o conceito de Monad Transformer para combinar diferentes
+  efeitos colaterais em um programa.
+
+- Uso de monad transformers para permitir a manipulação de diretórios no
+  compilador de markdown.
+
+* Markdown
+
+** Markdown
+
+- Iniciamos nosso curso com o projeto de um mini-compilador de Markdown.
+
+- Objetivo: revisar conceitos da linguagem Haskell
+
+** Markdown
+
+- Na última aula, finalizamos uma versão que processa apenas um único arquivo.
+
+- Nesta aula estenderemos esse compilador com:
+  - Processamento de diretórios
+  - Incluir folhas de estilo nos html gerados.
+
+** Markdown
+
+- Estender o compilador para processar diretórios é uma tarefa bem direta.
+
+** Markdown
+
+- Incluir folhas de estilo
+  - Tarefa simples, mas que leva a código longe do ideal.
+  - Mostraremos como melhorar o código combinando mônadas.
+
+* Processando diretórios
+
+** Processando diretórios
+
+- Para permitir processar todos os arquivos em um diretório, devemos modificar a interação por consoles.
+
+** Processando diretórios
+
+- Modificação do tipo de opções de entrada.
+
+#+begin_src haskell
+data Options
+  = Single Input Output
+  | Directory FilePath FilePath
+  deriving Show
+#+end_src
+
+** Processando diretórios
+
+- Modificação do parser
+
+#+begin_src haskell
+pOptions :: Parser Options
+pOptions
+  = subparser (singleParser <> directoryParser)
+    where
+      singleParser
+        = command "file"
+                  (info (helper <*> pSingle)
+                        (progDesc "Convert a single markdown file to HTML"))
+      directoryParser
+        = command "directory"
+                  (info (helper <*> pDirectory)
+                        (progDesc "Convert all directory md files to HTML"))
+#+end_src
+
+
+** Processando diretórios
+
+- Parser de diretórios
+
+#+begin_src haskell
+pDirectory :: Parser Options
+pDirectory =
+  Directory <$> pInputDir <*> pOutputDir
+#+end_src
+
+** Processando diretórios
+
+- Parser de diretório de entrada
+
+#+begin_src haskell
+pInputDir :: Parser FilePath
+pInputDir =
+  strOption
+    ( long "input"
+      <> short 'i'
+      <> metavar "DIRECTORY"
+      <> help "Input directory"
+    )
+#+end_src
+
+** Processando diretórios
+
+- Processamento de diretórios de saída é similar.
+
+** Processando diretórios
+
+- Mudanças no pipeline de compilação.
+
+#+begin_src haskell
+startPipeline :: IO ()
+startPipeline
+  = do
+      options <- optionsParser
+      case options of
+        Single inp out ->
+          filePipeline False inp out
+        Directory inpDir outDir ->
+          directoryPipeline inpDir outDir
+#+end_src
+
+** Processando diretórios
+
+- Modificações no pipeline de arquivos individuais
+
+#+begin_src haskell
+filePipeline :: Bool -> Input -> Output -> IO ()
+filePipeline dirMode inpFile outFile
+  = do
+      progressMessage dirMode inpFile
+      (title,inpHandle,outHandle) <- createHandles inpFile outFile
+      content <- hGetContents inpHandle
+      res <- pipeline (title_ title) content
+      hPutStrLn outHandle res
+      hClose inpHandle
+      hClose outHandle
+#+end_src
+
+** Processando diretórios
+
+- Pipeline de diretórios
+
+#+begin_src haskell
+directoryPipeline :: FilePath -> FilePath -> IO ()
+directoryPipeline inputDir outputDir
+  = do
+      d <- directoryContents inputDir
+      let files = filesToCompile d
+          otherFiles = filesToCopy d
+      let entries = map (\ (i,o) -> (FileInput i, FileOutput o)) files
+      shouldContinue <- createOutputDirectory outputDir
+      unless shouldContinue (hPutStrLn stderr "Cancelled." *> exitFailure)
+      mapM_ (uncurry (filePipeline True)) entries
+      let copy file = copyFile file (outputDir </> takeFileName file)
+      mapM_ copy otherFiles
+      putStrLn "Done."
+#+end_src
+
+** Processando diretórios
+
+- Código contendo exatamente essas modificações pode ser encontrado na branch ~markup-directories~.
+
+* Adicionando estilos
+
+** Adicionando estilos
+
+- Até o presente momento, não usamos folhas de estilo para formatar o HTML gerado.
+
+- Como adicionar folhas de estilo?
+
+** Adicionando estilos
+
+- Definido um tipo para armazenar o caminho de folhas de estilo
+
+#+begin_src haskell
+data Env
+  = Env {
+      stylePath :: FilePath
+    } deriving Show
+
+defaultEnv :: Env
+defaultEnv = Env ""
+#+end_src
+
+** Adicionando estilos
+
+- Agora, temos que modificar todo o código para permitir este parâmetro adicional.
+
+** Adicionando estilos
+
+- Adicionando tags para estilos na EDSL de HTML
+
+#+begin_src haskell
+stylesheet_ :: FilePath -> Head
+stylesheet_ path =
+    Head $ "<link rel=\"stylesheet\" type=\"text/css\" href=\"" <>
+            escape path <> "\">"
+#+end_src
+
+** Adicionando estilos
+
+- Modificando o parser de diretórios para entrada
+
+#+begin_src haskell
+data Options
+  = Single Input Output
+  | Directory FilePath FilePath Env
+  deriving Show
+#+end_src
+
+
+** Adicionando estilos
+
+- Modificando o parser de diretórios para entrada
+
+#+begin_src haskell
+pDirectory :: Parser Options
+pDirectory =
+  Directory <$> pInputDir <*> pOutputDir <*> pEnv
+#+end_src
+
+
+** Adicionando estilos
+
+- Modificando o parser de diretórios para entrada
+
+#+begin_src haskell
+pEnv :: Parser Env
+pEnv = fromMaybe defaultEnv <$> optional p
+  where
+    p =  Env <$> strOption
+                 (  long "style"
+                 <> short 'S'
+                 <> metavar "FILE"
+                 <> help "Stylesheet filename"
+                 )
+#+end_src
+
+** Adicionando estilos
+
+- Modificando o pipeline de compilação
+  - Inclusão do environment em *TODAS* as funções do pipeline.
+
+#+begin_src haskell
+startPipeline :: IO ()
+startPipeline
+  = do
+      options <- optionsParser
+      case options of
+        Single inp out ->
+          filePipeline False defaultEnv inp out
+        Directory inpDir outDir env ->
+          directoryPipeline env inpDir outDir
+#+end_src
+
+** Adicionando estilos
+
+- Modificando o pipeline de compilação.
+  - Estilos usados apenas em ~filePipeline~.
+  - Demais funções apenas "passam" o valor de ~Env~.
+
+#+begin_src haskell
+filePipeline :: Bool -> Env -> Input -> Output -> IO ()
+filePipeline dirMode env inpFile outFile
+  = do
+      progressMessage dirMode inpFile
+      (title,inpHandle,outHandle) <- createHandles inpFile outFile
+      content <- hGetContents inpHandle
+      let header = title_ title <> stylesheet_ (stylePath env)
+      res <- pipeline header content
+      hPutStrLn outHandle res
+      hClose inpHandle
+      hClose outHandle
+#+end_src
+
+** Adicionando estilos
+
+- Versão contendo o código com passagem explícita de ~Env~ está disponível
+  na branch ~markup-explicit-env~.
+
+** Adicionando estilos
+
+- Essa passagem de valores é tediosa e propensa a erros.
+
+- Ideal: Acessar o valor somente no ponto onde este será utilizado.
+  - Garantir que esse valor não será modificado.
+
+** Adicionando estilos
+
+- Podemos garantir a situação ideal utilizando a mônada de somente leitura
+  - Reader
+
+- Antes de apresentar o transformador monádico Reader, vamos considerar um exemplo.
+
+** Mônada Reader
+
+- Exemplo de uso: criação de uma página dinâmica utilizando
+  informação de e-mail fornecida pelo usuário.
+
+** Mônada Reader
+
+- Modelagem do problema.
+
+#+begin_src haskell
+type Html = String
+type Email = String
+
+div :: [Html] -> Html
+div children =
+  "<div>" ++ combine children ++ "</div>"
+#+end_src
+
+** Mônada Reader
+
+- Modelagem do problema
+
+#+begin_src haskell
+h1 :: [Html] -> Html
+h1 children =
+  "<h1>" ++ combine children ++ "</h1>"
+
+p :: [Html] -> Html
+p children =
+  "<p>" ++ combine children ++ "</p>"
+
+combine :: [Html] -> Html
+combine = intercalate ""
+#+end_src
+
+** Mônada Reader
+
+- Criando uma página a partir do email fornecido.
+
+#+begin_src  haskell
+main :: IO ()
+main = do
+   putStrLn "what is your email address?"
+   email <- getLine
+   print (view email)
+
+view :: Email -> Html
+view email = div [ page email ]
+#+end_src
+
+** Mônada Reader
+
+- Criando uma página a partir de um email fornecido.
+
+#+begin_src haskell
+page :: Email -> Html
+page email = div [ topNav
+                 , content email
+                 ]
+
+topNav :: Html
+topNav = div [ h1 [ "OurSite.com" ] ]
+#+end_src
+
+** Mônada Reader
+
+- Criando uma página a partir de um email fornecido.
+
+#+begin_src haskell
+content :: Email -> Html
+content email =
+  div
+    [ h1 [ "Custom Content for " ++ email ]
+    , left
+    , right email
+    ]
+
+left :: Html
+left =
+  div
+    [ p [ "this is the left side" ]
+    ]
+#+end_src
+
+** Mônada Reader
+
+- Criando uma página a partir de um email fornecido.
+
+#+begin_src haskell
+right :: Email -> Html
+right email =
+  div
+    [ article email
+    ]
+
+article :: Email -> Html
+article email =
+  div
+    [ p [ "this is an article" ]
+    , widget email
+    ]
+#+end_src
+
+** Mônada Reader
+
+#+begin_src haskell
+widget :: Email -> Html
+widget email =
+  div
+    [ p [ "Hey " ++ email ++ ", we've got a great offer for you!" ]
+    ]
+#+end_src
+
+** Mônada Reader
+
+- Problema: De todo o código apresentado, apenas as funções widget
+  e content usam a informação de email.
+
+- Como usar essa informação apenas nos pontos necessários?
+
+** Mônada Reader
+
+- Solução: mônada reader.
+
+- Definida pelo seguinte tipo
+
+#+begin_src haskell
+newtype Reader e a
+  = Reader (e -> a)
+
+runReader :: Reader e a -> e -> a
+runReader (Reader f) = f
+#+end_src
+
+** Mônada Reader
+
+- Instância de =Functor=
+
+#+begin_src haskell
+instance Functor (Reader e) where
+  fmap f (Reader g) = Reader (\ e -> f (g e))
+#+end_src
+
+** Mônada Reader
+
+- Instância de =Applicative=
+
+#+begin_src haskell
+instance Applicative (Reader e) where
+  pure v = Reader (\ _ -> v)
+  (Reader f) <*> (Reader g) = Reader (\ e -> (f e) (g e))
+#+end_src
+
+** Mônada Reader
+
+- Instância de =Monad=
+
+#+begin_src haskell
+instance Monad (Reader e) where
+    (Reader m) >>= f
+       = Reader (\ e -> let a = m e
+                        in runReader (f a) e)
+#+end_src
+
+** Mônada Reader
+
+- Função =ask=
+  - Retorna o valor armazenado dentro da computação =Reader=
+
+#+begin_src haskell
+ask :: Reader e e
+ask = Reader id
+#+end_src
+
+** Mônada Reader
+
+- Como refatorar a geração de páginas?
+
+#+begin_src haskell
+main :: IO ()
+main = do
+  putStrLn "what is your email address?"
+  email <- getLine
+  print (runReader view email)
+
+view :: Reader Email Html
+view = do
+  r <- page
+  return $ div [ r ]
+#+end_src
+
+** Mônada Reader
+
+- Continuando a refatoração
+
+#+begin_src haskell
+page :: Reader Email Html
+page = do
+  r <- content
+  return $ div [ topNav , r ]
+
+topNav :: Html
+topNav = div [ h1 [ "OurSite.com" ] ]
+#+end_src
+
+** Mônada Reader
+
+- Continuando...
+
+#+begin_src haskell
+content :: Reader Email Html
+content = do
+    email <- ask
+    r <- right
+    return $ div [ h1 [ "Custom Content for " ++ email ]
+                 , left , r ]
+left :: Html
+left
+  = div [ p [ "this is the left side" ] ]
+#+end_src
+
+** Mônada Reader
+
+- Continuando...
+
+#+begin_src haskell
+right :: Reader Email Html
+right
+  = do
+      a <- article
+      pure $ div [ a ]
+
+article :: Reader Email Html
+article
+  = do
+      w <- widget
+      pure $ div [ p [ "this is an article" ]
+                 , w
+                 ]
+#+end_src
+
+** Mônada Reader
+
+- Continuando ...
+
+#+begin_src haskell
+widget :: Reader Email Html
+widget
+  = do
+      email <- ask
+      pure $ div [
+                   p [ "Hey " ++ email ++
+                       ", we've got a great offer for you!"
+                     ]
+                 ]
+#+end_src
+
+
+** Adicionando estilos
+
+- Como combinar essa mônada com a mônada de IO?
+
+** Adicionando estilos
+
+- Para isso, devemos utilizar *transformadores monádicos*.
+  - Permitem combinar a funcionalidade de diferentes mônadas.
+
+** Adicionando estilos
+
+- Principal função da mônada de somente leitura
+  - Retorna o valor armazenado na mônada para consulta.
+
+#+begin_src haskell
+ask :: MonadReader m => m a
+#+end_src
+
+** Adicionando estilos
+
+- Modificando o pipeline de compilação para usar a nova mônada
+
+#+begin_src haskell
+type CompilerM a = (ReaderT Env IO) a
+
+runCompilerM :: Env -> CompilerM a -> IO a
+runCompilerM env m = runReaderT m env
+#+end_src
+
+** Adicionando estilos
+
+- Modificando o início do pipeline
+
+#+begin_src haskell
+startPipeline :: IO ()
+startPipeline
+  = do
+      options <- optionsParser
+      case options of
+        Single inp out ->
+          runCompilerM defaultEnv (filePipeline False inp out)
+        Directory inpDir outDir env ->
+          runCompilerM env (directoryPipeline inpDir outDir)
+#+end_src
+
+** Adicionando estilos
+
+- Modificando o pipeline de arquivos individuais
+  - Uso da função ~ask~
+
+#+begin_src haskell
+filePipeline :: Bool -> Input -> Output -> CompilerM ()
+filePipeline dirMode inpFile outFile
+  = do
+      env <- ask
+      progressMessage dirMode inpFile
+      (title,inpHandle,outHandle) <- liftIO $ createHandles inpFile outFile
+      content <- liftIO $ hGetContents inpHandle
+      let header = title_ title <> stylesheet_ (stylePath env)
+      res <- pipeline header content
+      writeAndCloseHandles res inpHandle outHandle
+#+end_src
+
+** Adicionando estilos
+
+- Demais funções tiveram alterações pontuais
+  - Modificação da assinatura de tipos
+  - Uso de ~liftIO~.
+
+** Adicionando estilos
+
+- Código contendo essa versão está disponível na branch ~main~.
+
+* Concluindo
+
+** Concluindo
+
+- Com isso, terminamos nossa revisão de Haskell.
+- Produzimos um compilador de um subconjunto de Markdown para HTML.
+  - Utilizamos várias bibliotecas úteis de Haskell.
+  - Apresentamos o padrão functional core / imperative shell
+
+** Concluindo
+
+- Utilizamos monad transformers em um exemplo muito simples.
+
+- Recomendo ver um exemplo um pouco mais interessante disponível no seguinte [[https://github.com/mgrabmueller/TransformersStepByStep][repositório]].
+
+** Concluindo
+
+- Próxima aula: iniciamos o primeiro tópico de compiladores
+  - Análise léxica

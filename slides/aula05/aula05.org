@@ -1,0 +1,476 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: moon
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Análise Léxica
+#+Author: Construção de compiladores I
+
+
+* Objetivos
+
+** Objetivos
+
+- Definir a etapa de análise léxica e apresentar um analisador
+  léxico ad-hoc para a linguagem considerada.
+
+* Linguagem Exp
+
+** Linguagem Exp
+
+- Linguagem simples utilizada para exposição dos conceitos da disciplina.
+
+- Permite a análise de problemas recorrentes no projeto de compiladores.
+
+** Linguagem Exp
+
+- Porém, como especificar uma linguagem de programação?
+
+** Linguagem Exp
+
+- Sintaxe definida usando gramáticas livres de contexto.
+  - Alguns elementos são descritos por Expressões regulares.
+
+** Linguagem Exp
+
+- Elementos $\mathrm{léxicos}$ são representados utilizando pela string propriamente dita
+  - Ex.: números, operadores e parêntesis.
+
+** Linguagem Exp
+
+- Números: $(0 + 1 + ... + 9)^+$.
+
+- Operadores e parêntesis representados pelo próprio elemento.
+
+** Linguagem Exp
+
+- Comentários:
+  - Linha: $\textrm{// este é um comentário.}$
+  - Bloco: $\textrm{/* este é um comentário. */}$
+
+** Linguagem Exp
+
+- Sintaxe de Exp
+
+\begin{array}{lcl}
+E   & \to  & n\,|\,E + E \,|\, E * E \,|\, (E)\\
+\end{array}
+
+* Análise léxica
+
+** Análise léxica
+
+- Primeira etapa do frontend de um compilador.
+
+- Responsável por dividir a entrada em uma sequência de *tokens*.
+  - Eliminar espaços em branco e comentários.
+
+** Análise léxica
+
+- Token: string que pode ser considerada indivisível pela gramática
+  de uma linguagem.
+
+** Análise léxica
+
+- Como implementar um analisador léxico para uma linguagem?
+
+- Intuitivamente, um analisador léxico é uma função de tipo
+
+#+begin_src haskell
+String -> [Token]
+#+end_src
+
+** Análise léxica
+
+- Representação de tokens
+
+#+begin_src haskell
+data Lexeme
+  = TNumber Int | TLParen | TRParen
+  | TPlus | TTimes | TEOF
+
+data Token
+  = Token {
+      lexeme :: Lexeme
+    , position :: (Int, Int)
+    }
+#+end_src
+
+** Análise léxica
+
+- Definir uma função de tipo:
+
+#+begin_src haskell
+lexer :: String -> Either String [Token]
+lexer = finish . foldl step base
+#+end_src
+
+** Análise léxica
+
+- Continuação...
+  - Propagação de erros da análise léxica.
+  - Transição entre estados da análise léxica.
+
+#+begin_src haskell
+step ac@(Left _) _ = ac
+step (Right state) c = transition state c
+
+base = Right (1, 1, "", [])
+#+end_src
+
+** Análise léxica
+
+- Transição entre estados
+
+#+begin_src haskell
+transition :: State -> Char -> Either String State
+transition state@(l, col, t, ts) c
+  | c == '\n' = mkDigits state c
+  | isSpace c = mkDigits state c
+  | c == '+'
+    = Right (l, col + 1, "", mkToken state (Token TPlus (l,col)) ++ ts)
+  | c == ')'
+    = Right (l, col + 1, "", mkToken state (Token TRParen (l,col)) ++ ts)
+  | isDigit c = Right (l, col + 1, c : t, ts)
+  | otherwise = unexpectedCharError l col c
+#+end_src
+
+** Análise léxica
+
+- Função =extract=:
+
+#+begin_src haskell
+extract (l, col, s, ts)
+  | null s = reverse ts
+  | otherwise = let n = read (reverse s)
+                    t = Token (TNumber (VInt n))
+                              (l, col - (length s))
+                in reverse (t : ts)
+#+end_src
+
+** Análise léxica
+
+- Apesar de possível, essa abordagem possui problemas.
+  - Não é escalável: Como adicionar novos operadores e variáveis?.
+  - Não é simples eliminar comentários com essa estratégia.
+
+** Análise léxica
+
+- Dificuldade com comentários
+  - Como adicionar em comentários em blocos?
+
+** Análise léxica
+
+- Seria possível realizar a análise léxica de forma:
+  - Sistemática
+  - Escalável
+  - Eficiente
+
+** Análise léxica
+
+- A resposta para as perguntas anteriores é *SIM*
+
+- Para resolvermos o dilema da análise léxica usaremos:
+  - Autômatos finitos determinísticos (AFDs)
+  - Expressões regulares (ERs)
+
+** Análise léxica
+
+- Intuitivamente:
+  - Processamento da entrada usando AFDs.
+  - Especificação de lexemas utilizando ERs.
+
+* Autômatos finitos
+
+** Autômatos finitos
+
+- Um AFD é uma quíntupla $M=(E,\Sigma,\delta,i,F)$:
+  - $E$: conjunto de estados.
+  - $\Sigma$: alfabeto de entrada.
+  - $\delta$ : E \times \Sigma \to E: função de transição.
+  - $i\in E$: estado inicial.
+  - $F\subseteq E$: conjunto de estados finais.
+
+** Autômatos finitos
+
+- Representando um autômato em Haskell
+
+#+begin_src haskell
+data DFA a
+  = DFA {
+      start :: a
+    , delta :: a -> Char -> a
+    , finals :: a -> Bool
+    }
+#+end_src
+
+** Autômatos finitos
+
+- Processando uma string em um DFA
+
+#+begin_src haskell
+deltaStar :: DFA a -> String -> a
+deltaStar m = foldl (delta m) (start m)
+#+end_src
+
+** Autômatos finitos
+
+- Relembrando:
+
+#+begin_src haskell
+foldl :: (b -> a -> b) -> b -> [a] -> b
+foldl _ v []       = v
+foldl f v (x : xs) = foldl (f v x) xs
+#+end_src
+
+** Autômatos finitos
+
+- Exemplo: Aceitando números.
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image1.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+\tikzset{
+        ->,  % makes the edges directed
+        >=stealth', % makes the arrow heads bold
+        node distance=2.5cm,
+        every state/.style={thick, fill=gray!10},
+        initial text=$\,$
+        }
+\begin{tikzpicture}
+   \node[state,initial]               (s0){$A$} ;
+   \node[state, accepting, right of=s0](s1){$B$} ;
+   \node[state, below of=s1](s2){$E$};
+   \draw (s0) edge[above] node{$0-9$} (s1)
+         (s0) edge[left] node{$\overline{0-9}$}   (s2)
+         (s1) edge[loop above]       node{$0-9$} (s1)
+         (s1) edge[right]            node{$\overline{0-9}$}   (s2) ;
+\end{tikzpicture}
+#+end_src
+
+[[./imgs/image1.png]]
+
+
+** Autômatos finitos
+
+- Exemplo em código Haskell
+
+#+begin_src haskell
+numberDFA :: DFA (Maybe Bool)
+numberDFA
+  = DFA {
+      start = Just False
+    , delta = numberTrans
+    , finals = \ e -> e == Just True
+    }
+    where
+      numberTrans (Just False) c
+        | isDigit c = Just True
+        | otherwise = Nothing
+      numberTrans (Just True) c
+        | isDigit c = Just True
+        | otherwise = Nothing
+      numberTrans _ _ = Nothing
+#+end_src
+
+** Autômatos finitos
+
+- Exemplo: aceitando palavras chave
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image2.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+  \begin{tikzpicture}
+     \node[state,initial]     (s0){$A$} ;
+     \node[state, right of=s0](s1){$B$} ;
+     \node[state, accepting, right of=s1](s2){$C$};
+     \node[state, below of=s1](s3){$E$};
+     \draw (s0) edge[above] node{$i$} (s1)
+           (s1) edge[above] node{$f$} (s2)
+           (s0) edge[left] node{$\overline{i}$}  (s3)
+           (s1) edge[above] node{$f$} (s2)
+           (s1) edge[right] node{$\overline{f}$} (s3)
+           (s2) edge[right] node{$.$}(s3)
+           (s3) edge[loop left] node{$.$} (s3);
+  \end{tikzpicture}
+#+end_src
+
+[[./imgs/image2.png]]
+
+** Autômatos finitos
+
+- Exemplo em código Haskell
+
+#+begin_src haskell
+ifDFA :: DFA (Maybe Int)
+ifDFA
+  = DFA {
+      start = Just 0
+    , delta = ifTrans
+    , finals = \ e -> e == Just 2
+    }
+ where
+   ifTrans (Just 0) 'i' = Just 1
+   ifTrans (Just 1) 'f' = Just 2
+   ifTrans _ _ = Nothing
+#+end_src
+
+** Autômatos finitos
+
+- Problema: lexemas da linguagem não são disjuntos.
+  - Considere os tokens $\mathrm{if}$ e $\mathrm{iftrue}$
+  - Como um AFD deve lidar com essa situação?
+
+** Autômatos finitos
+
+- O analisador léxico deve considerar como token o *maior prefixo consumido*.
+
+- Logo, entre $\mathrm{if}$ e $\mathrm{iftrue}$, deverá ser escolhido o segundo.
+  - Como processar o maior prefixo possível?
+
+** Autômatos finitos
+
+- Obtendo o maior casamento em um AFD
+
+- Função: *go*
+  - 1o argumento: Estado atual.
+  - 2o argumento: Tripla formada por:
+    - Último estado é final?
+    - Prefixo processado e sufixo restante.
+
+#+begin_src haskell
+longest :: DFA a -> String -> Maybe (String, String)
+longest m s
+  = go (start m) (finals m (start m), Just "", Just  s)
+#+end_src
+
+** Autômatos finitos
+
+- Definição de =go=.
+
+- Caso 1: String completamente processada.
+
+#+begin_src haskell
+go _ (True, Just pre, Just "") = Just (pre, "")
+go _ (False, _, Just "") = Nothing
+#+end_src
+
+** Autômatos finitos
+
+- Definição de =go=
+
+- Caso 2: Casamento já encontrado.
+
+#+begin_src haskell
+go e (True, Just pre, Just (c : cs))
+  | finals m (delta m e c) = go (delta m e c) (True, Just (c : pre), Just cs)
+  | otherwise   = Just (pre, (c : cs))
+#+end_src
+
+** Autômatos finitos
+
+- Definição de =go=
+
+- Caso 3: Casamento ainda não encontrado
+
+#+begin_src haskell
+go e (False, Just pre, Just (c : cs))
+  | finals m (delta m e c) = go (delta m e c)(True, Just (c : pre), Just cs)
+  | otherwise = go (delta m e c) (False, Just (c : pre), Just cs)
+#+end_src
+
+** Autômatos finitos
+
+- Como processar todos os tokens de uma entrada?
+
+#+begin_src haskell
+lexer :: DFA a -> (String -> Maybe [b]) -> String -> Maybe [b]
+lexer _ _ "" = return []
+lexer m action s
+  = do
+      (pref, suf) <- longest m s
+      token <- action (reverse pref)
+      tokens <- lexer m action suf
+      return (token ++ tokens)
+#+end_src
+
+
+** Autômatos finitos
+
+- Pergunta: como combinar os AFDs para...
+  - Palavras chaves
+  - Identificadores
+
+** Autômatos finitos
+
+- Vamos utilizar a construção da união de AFDs.
+  - União definida em termos de produto
+
+** Autômatos finitos
+
+- Construção de produto
+
+#+begin_src haskell
+dfaProduct :: (Eq a, Eq b) => DFA a ->
+                              DFA b ->
+                              ((a,b) -> Bool) -> DFA (a, b)
+dfaProduct m1 m2 fin
+  = DFA {
+      start = (start m1, start m2)
+    , delta = delta'
+    , finals = fin
+    }
+    where
+      delta' (e1,e2) c = (delta m1 e1 c, delta m2 e2 c)
+#+end_src
+
+** Autômatos finitos
+
+- Definindo a união
+
+#+begin_src haskell
+unionDFA :: (Eq a, Eq b) => DFA a -> DFA b -> DFA (a,b)
+unionDFA m1 m2 = dfaProduct m1 m2 g
+  where
+    g (e1, e2) = finals m1 e1 || finals m2 e2
+#+end_src
+
+** Autômatos finitos
+
+- Resolvendo o problema entre "if" e "ifblabla".
+
+#+begin_src haskell
+ifOrIdentDFA :: DFA (Maybe Int, Maybe Int)
+ifOrIdentDFA = unionDFA ifDFA identDFA
+#+end_src
+
+
+* Concluindo
+
+** Concluindo
+
+- Apresentamos a linguagem IMP que será usada neste curso.
+
+- Discutimos como implementar análise léxica.
+
+** Concluindo
+
+- Mostramos que AFDs são um formalismo apropriado para denotar
+  analisadores léxicos.
+
+- Próxima aula: Especificando lexemas utilizando expressões regulares.
