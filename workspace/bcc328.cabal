@@ -93,6 +93,7 @@ library
       Automata.DFA
       Automata.Derivative
       Automata.ExamplesDFA
+      Automata.Minimization
       Automata.NFA
       Automata.RegExp
       -- expressions
@@ -150,7 +151,10 @@ library
       PEG.Pattern.Syntax.ParsedTree 
       PEG.Pattern.Syntax.Pattern 
       PEG.Pattern.Syntax.Peg
-      PEG.Semantics.Simple 
+      PEG.Semantics.Simple
+      -- Review about monads
+      Review.Reader.SimpleHtml
+      Review.Reader.SimpleReader
       -- general utilities
       Utils.Pretty
       Utils.Value
@@ -271,7 +275,53 @@ executable line
     -- Base language which the package is written in.
     default-language: Haskell2010
 
+executable page-noreader
+    -- Import common warning flags.
+    import:          common-opts
 
+    -- .hs or .lhs file containing the Main module.
+    main-is:          PageNoReader.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:
+        base ^>=4.18.3.0,
+        bcc328
+
+    -- Directories containing source files.
+    hs-source-dirs:   src/Review/Reader
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
+executable page-reader
+    -- Import common warning flags.
+    import:          common-opts
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          PageReader.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:
+        base ^>=4.18.3.0,
+        bcc328
+
+    -- Directories containing source files.
+    hs-source-dirs:   src/Review/Reader
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
 
 test-suite bcc328-test
     -- Import common warning flags.
