@@ -1,0 +1,516 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:../reveal.js
+
+#+Title: Parsing Expression Grammars
+#+Author: Construção de compiladores I
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar o formalismo de Parsing Expression Grammars (PEG) e seu uso para análise sintática.
+
+- Apresentar o conceito de boa formação de PEGs, que garantem a terminação.
+
+* Motivação
+
+** Motivação
+
+- Gramáticas livres de contexto é um formalismo gerativo
+  - Definem como gerar **todas** as palavras da linguagem especificada.
+
+- Problema:
+  - Usamos gramáticas como uma forma de especificar como realizar **reconhecimento**.
+
+** Motivação
+
+- Exemplo: Linguagem para palavras de tamanho par.
+
+\begin{array}{lcl}
+P & \to & 0A\,|\,1A\,|\,\lambda\\
+A & \to & 0A\,|\,1A\,|\,0\,|\,1\\
+\end{array}
+
+** Motivação
+
+- Regras da gramática anterior mostram como produzir palavras desta linguagem.
+
+- Porém, gerar palavras não é o mesmo que reconhecer se uma palavra pertence ou não a esta linguagem.
+
+** Motivação
+
+- O que seria um reconhecedor?
+  - Um "algoritmo" para determinar se uma palavra pertence ou não a esta linguagem.
+
+** Motivação
+
+- Possível especificação de um reconhecedor para a linguagem de palavras de tamanho par.
+
+\begin{array}{lcl}
+\{w \in \{0,1\}^*\,|\,\exists k. |w| = 2.k\}
+\end{array}
+
+** Motivação
+
+- Um problema de gramáticas livres de contexto é que estas não foram projetadas para definir reconhecedores.
+  - Essa ideia nasceu nos estudos linguísticos de Noam Chomsky.
+- Problemas para uso de GLCs em reconhecedores:
+  - Ambiguidade
+
+** Motivação
+
+- PEGs foram propostas por Brian Ford em 2004 como uma alternativa de especificação baseada em reconhecedores.
+
+- A semântica de PEGs é a de determinar se uma palavra pertence ou não a uma linguagem e não produzir palavras desta linguagem.
+
+* Introdução a PEGs
+
+** Introdução a PEGs
+
+- Uma PEG é similar a uma gramática
+  - Regras associam variáveis a expressões
+- Expressões são similares ao lado direito de regras de GLCs
+
+** Introdução a PEGs
+
+- A sintaxe de expressões é definida como:
+
+\begin{array}{lcl}
+e & \to  & \lambda \\
+  & \mid & a \\
+  & \mid & A \\
+  & \mid & e\,e\\
+  & \mid & e / e \\
+  & \mid & e^*\\
+  & \mid & !\,e\\
+\end{array}
+
+** Introdução a PEGs
+
+- Regras consistem de um par $(A,e)$
+  - Normalmente escrito como $A \leftarrow e$
+
+** Introdução a PEGs
+
+- Novos operadores
+  - Escolha ordenada: $e_1 / e_2$
+  - Fecho de Kleene: $e^*$
+  - Not: $!\,e$
+
+** Introdução a PEGs
+
+- Qual o significado dos novos operadores?
+  - Vamos apresentar a semântica de cada um dos operadores
+
+* Semântica de PEGs
+
+** Semântica de PEGs
+
+- Como entender uma PEG, visto que elas não geram palavras?
+
+- Basicamente, uma PEG é um formalismo para definir analisadores descendente recursivo.
+
+** Semântica de PEGs
+
+- Uma PEG possui estrutura similar a uma gramática
+
+- Uma PEG é $(V, \Sigma, R, e)$
+  - $V$: conjunto de variáveis
+  - $\Sigma$: alfabeto
+  - $R$ : Regras de produção, uma função de variáveis pra expressões
+  - $e$: expressão inicial.
+
+** Semântica de PEGs
+
+- Dada uma expressão e uma string, a execução pode resultar:
+  - Falha.
+  - Prefixo consumido pela expressão e sufixo remanescente.
+
+** Semântica de PEGs
+
+- Vamos utilizar a seguinte notação para expressar a semântica:
+  - $e$: expressão atual
+  - $s$: string de entrada
+  - $r$: resultado.
+
+\begin{equation*}
+   \langle e, s \rangle \Rightarrow_{G} r
+\end{equation*}
+
+** Semântica de PEGs
+
+- O resultado $r$ pode ser:
+  - uma falha, representada por $\bot$
+  - sucesso, que resulta em par formado por um prefixo $p$ e um sufixo $q$
+
+** Semântica de PEGs
+
+- Semântica de $\lambda$:
+
+\begin{equation*}
+  \dfrac{}{\langle\lambda, s\rangle \Rightarrow_G \langle \lambda, s \rangle}
+\end{equation*}
+
+** Semântica de PEGs
+
+- Semântica de $a$:
+
+\begin{array}{cc}
+   \dfrac{}{\langle a, ap\rangle \Rightarrow_G \langle a , p \rangle} &
+   \dfrac{(\exists p. s = bp \land a \neq b) \lor s = \lambda}{\langle a, s \rangle \Rightarrow_G \bot} \\
+\end{array}
+
+** Semântica de PEGs
+
+- Semântica de $A$:
+
+\begin{equation*}
+   \dfrac{R(A) = e\,\,\,\,\,\langle e, s \rangle \Rightarrow_G r}
+         {\langle A, s \rangle \Rightarrow_G r}
+\end{equation*}
+
+** Semântica de PEGs
+
+- Semântica de $e_1\,e_2$, parte 01
+
+\begin{array}{c}
+  \dfrac{\begin{array}{c}
+            \langle e_1, s \rangle \Rightarrow_G \langle p_1, q_1 \rangle \\
+            \langle e_2, q_1 \rangle \Rightarrow_G \langle p_2, q_2 \rangle
+         \end{array}}
+        {\langle e_1\,e_2,s\rangle \Rightarrow_G\langle p_1\,p_2,q_2\rangle}
+\end{array}
+
+
+** Semântica de PEGs
+
+- Semântica de $e_1\,e_2$, parte 02
+
+\begin{array}{cc}
+  \dfrac{\langle e_1, s \rangle \Rightarrow_G \bot}
+        {\langle e_1\,e_2,s\rangle \Rightarrow_G\langle \bot} &
+  \dfrac{\begin{array}{c}
+           \langle e_1, s \rangle \Rightarrow_G \langle p_1, q_1 \rangle \\
+           \langle e_2, q_1 \rangle \Rightarrow_G \bot
+        \end{array}}
+        {\langle e_1\,e_2,s\rangle \Rightarrow_G \bot}
+\end{array}
+
+** Semântica de PEGs
+
+- Semântica de $e_1\,/\,e_2$
+
+\begin{array}{cc}
+   \dfrac{\langle e_1, s \rangle \Rightarrow_G \langle p, q \rangle}
+         {\langle e_1\,/\,e_2 \rangle \Rightarrow_G \langle p, q \rangle} &
+   \dfrac{\begin{array}{c}
+               \langle e_1, s \rangle \Rightarrow_G \bot \\
+               \langle e_2, s \rangle \Rightarrow_G r
+          \end{array}}
+         {\langle e_1\,/\,e_2 \rangle \Rightarrow_G r}
+\end{array}
+
+** Semântica de PEGs
+
+- Semântica de $e^*$
+
+\begin{array}{cc}
+   \dfrac{\langle e, s \rangle \Rightarrow_G \bot}
+         {\langle e^*, s \rangle \Rightarrow_G \langle \lambda, s \rangle} &
+   \dfrac{\begin{array}{c}
+             \langle e, s \rangle \Rightarrow_G \langle p_1, q_1 \rangle\\
+             \langle e^*, q_1 \rangle \Rightarrow_G \langle p_2, q_2 \rangle \\
+          \end{array}}
+         {\langle e^*, s \rangle \Rightarrow_G \langle p_1\, p_2, q_2 \rangle}
+\end{array}
+
+** Semântica de PEGs
+
+- Semântica de $!\,e$
+
+\begin{array}{cc}
+   \dfrac{\langle e, s \rangle \Rightarrow_G \langle p, q\rangle}
+         {\langle !\,e,s \rangle \Rightarrow_G \bot} &
+   \dfrac{\langle e, s \rangle \Rightarrow_G \bot}
+         {\langle !\,e,s \rangle \Rightarrow_G \langle \lambda, s \rangle}
+\end{array}
+
+** Semântica de PEGs
+
+- Dizemos que uma expressão $e$ executa com sucesso se:
+
+\begin{equation*}
+\exists p\,s\,.\,\langle e , w \rangle \Rightarrow_G \langle p, s \rangle
+\end{equation*}
+
+** Semântica de PEGs
+
+- Dizemos que uma expressão $e$ é anulável se ela pode executar com sucesso sem consumir nenhum elemento da entrada.
+
+* Exemplos
+
+** Exemplos
+
+- PEG para $\{0^n1^n\,|\, n \geq 0\}$
+  - "." denota qualquer caractere.
+
+\begin{array}{lcl}
+P & \leftarrow & 0P1\,/\,!.
+\end{array}
+
+** Exemplos
+
+- PEG para $\{0^n1^n2^n\,|\,n\geq 0\}$.
+
+\begin{array}{lcl}
+P & \leftarrow & !!(A\,!1)0^*B!./!.\\
+A & \leftarrow & 0A1/!.\\
+B & \leftarrow & 1B2/!.\\
+\end{array}
+
+** Exemplos
+
+- PEG para expressões
+
+\begin{array}{lcl}
+E & \leftarrow & T(+ E)^*\\
+T & \leftarrow & F (* T)^*\\
+F & \leftarrow & n / x / (E)\\
+\end{array}
+
+* Terminação em PEGs
+
+** Terminação em PEGs
+
+- PEGs são um tipo de analisador descendente
+- Logo, PEGs não podem utilizar regras recursivas à esquerda
+
+** Terminação em PEGs
+
+- Para garantir a terminação, toda expressão $e^*$ deve ser tal que:
+  - $e$ deve sempre consumir um prefixo não vazio da entrada.
+
+** Terminação em PEGs
+
+- Resumindo:
+  - Gramáticas sem recursão à esquerda (direta ou indireta)
+  - Expressões sobre Kleene não devem aceitar a string vazia.
+
+- Gramáticas que atendem essas condições tem garantia de terminar para toda a entrada.
+
+* Implementação de PEGs
+
+** Implementação de PEGs
+
+- Similar a analisadores descendentes recursivos.
+
+- Modificações necessárias apenas para lidar com escolha / Kleene
+
+** Implementação de PEGs
+
+- Resultados do processamento de uma expressão
+
+#+begin_src haskell
+data Result s a
+  = Pure a           -- did not consume anything. We can backtrack.
+  | Commit s a       -- remaining input and result.
+  | Fail String Bool -- true if consume any input
+  deriving (Show, Functor)
+#+end_src
+
+** Implementação de PEGs
+
+- Definição de uma expressão
+
+#+begin_src haskell
+newtype PExp s a
+  = PExp {
+      runPExp :: s -> Result s a
+    } deriving Functor
+#+end_src
+
+** Implementação de PEGs
+
+- Definição do operador "."
+
+#+begin_src haskell
+class Stream a where
+  anyChar :: PExp a Char
+
+instance Stream String where
+  anyChar = PExp $ \ d ->
+    case d of
+      (x : xs) -> Commit xs x
+      []       -> Fail "eof" False
+#+end_src
+
+** Implementação de PEGs
+
+- Expressões são applicative functors
+
+#+begin_src haskell
+instance Applicative (PExp s) where
+  pure x = PExp $ \ _ -> Pure x
+  (PExp efun) <*> (PExp earg)
+    = PExp $ \ d ->
+        case efun d of
+          Pure f   -> f <$> earg d
+          Fail s c -> Fail s c
+          Commit d' f ->
+            case earg d' of
+              Pure a -> Commit d' (f a)
+              Fail s' _ -> Fail s' True
+              Commit d'' a -> Commit d'' (f a)
+#+end_src
+
+** Implementação de PEGs
+
+- Escolha ordenada
+
+#+begin_src haskell
+instance Alternative (PExp d) where
+  (PExp e1) <|> (PExp e2) = PExp $ \ d ->
+    case e1 d of
+      Fail _ _ -> e2 d
+      x        -> x
+  empty = PExp $ \ _ -> Fail "empty" False
+
+(</>) :: PExp d a -> PExp d a -> PExp d a
+e1 </> e2 = try e1 <|> e2
+#+end_src
+
+** Implementação de PEGs
+
+- Expressões básicas
+
+#+begin_src haskell
+satisfy :: Stream d => (Char -> Bool) -> PExp d Char
+satisfy p = do
+  x <- anyChar
+  x <$ guard (p x)
+
+symbol :: Stream d => Char -> PExp d Char
+symbol c = satisfy (c ==)
+
+lambda :: Stream d => a -> PExp d a
+lambda v = PExp $ \ d -> Commit d v
+#+end_src
+
+** Implementação de PEGs
+
+- Kleene
+
+#+begin_src haskell
+star :: Stream d => PExp d a -> PExp d [a]
+star e1 = PExp $ \ d ->
+  case runPExp e1 d of
+    Fail _ _ -> Commit d []
+    Pure _ -> Fail "Nullable star" False
+    Commit d' v ->
+      case runPExp (star e1) d' of
+        Fail _ _ -> Commit d []
+        Commit d'' vs -> Commit d'' (v : vs)
+        Pure _ -> Fail "Nullable star" False
+#+end_src
+
+** Implementação de PEGs
+
+- Negação
+
+#+begin_src haskell
+not :: Stream d => PExp d a -> PExp d ()
+not e = PExp $ \ d ->
+  case runPExp e d of
+    Fail _ _ -> Pure ()
+    _        -> Fail "not" False
+
+and :: Stream d => PExp d a -> PExp d ()
+and e
+  = not $ not e
+#+end_src
+
+** Implementação de PEGs
+
+- Exemplo $\{a^nb^nc^n\,|\,n \geq 0\}$
+
+#+begin_src haskell
+abc :: PExp String String
+abc = f <$> and (ab *> not b) <*>
+            star a            <*>
+            bc                <*>
+            not anyChar
+  where
+    a = symbol 'a'
+    b = symbol 'b'
+    f _ as bcs _ = as ++ bcs
+#+end_src
+
+** Implementação de PEGs
+
+- Exemplo: expressões
+
+#+begin_src haskell
+expr :: PExp String String
+expr = f <$> term <*> star ((++) <$> plus <*> expr)
+  where
+     f s1 ss = s1 ++ concat ss
+     plus = (wrap <$> symbol '+') </> (wrap <$> symbol '-')
+
+wrap :: a -> [a]
+wrap x = [x]
+#+end_src
+
+** Implementação de PEGs
+
+- Exemplo: expressões
+
+#+begin_src haskell
+term :: PExp String String
+term = f <$> factor <*> star ((++) <$> times <*> term)
+      where
+        f s1 ss = s1 ++ concat ss
+        times = (wrap <$> symbol '*') </> (wrap <$> symbol '/')
+#+end_src
+
+** Implementação de PEGs
+
+- Exemplo: expressões
+
+#+begin_src haskell
+factor :: PExp String String
+factor = (f <$> symbol '(' <*> expr <*> symbol ')') </> number </> var
+   where
+      f c s c' = c : s ++ [c']
+#+end_src
+
+** Implementação de PEGs
+
+- Exemplo: expressões
+
+#+begin_src haskell
+number :: PExp String String
+number = (:) <$> digit <*> star (satisfy isDigit)
+
+digit :: PExp String Char
+digit = satisfy isDigit
+
+var :: PExp String String
+var = f <$> letter <*> star (letter </> digit)
+      where
+        letter = satisfy isLetter
+        f l s = l : s
+#+end_src
+
+* Conclusão
+
+** Conclusão
+
+- Nesta aula apresentamos PEGs, um formalismo para reconhecedores.
+
+- Discutimos a semântica, problema de terminação e apresentamos uma implementação em Haskell.

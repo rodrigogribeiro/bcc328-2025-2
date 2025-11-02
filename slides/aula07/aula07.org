@@ -1,0 +1,600 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Derivadas e Análise Léxica
+#+Author: Construção de compiladores I
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar outra técnica para obtenção de AFDs
+  a partir de ERs: derivadas.
+
+- Apresentar o gerador de analisadores léxicos para Haskell: Alex.
+
+* Derivadas de ERs
+
+** Derivadas de ERs
+
+- Definição de derivada de uma linguagem:
+
+\begin{array}{lcl}
+\partial_{a}(L) & = & \{y \in \Sigma^*\,|\,ay \in L\}\\
+\end{array}
+
+** Derivadas de ERs
+
+- Exemplo:
+
+\begin{array}{lc}
+\partial_{0}(\{10,\lambda,0,01\}) & = \\
+ \{\lambda,1\}\\
+\end{array}
+
+** Derivadas de ERs
+
+- A operação de derivada pode ser definida sobre ERs.
+  - Definição da derivada é apenas uma função recursiva.
+
+** Derivadas de ERs
+
+- Operação auxiliar: anulabilidade.
+
+\begin{array}{lcl}
+\nu(\emptyset)  & = & \bot\\
+\nu(\lambda)    & = & \top\\
+\nu(a)          & = & \bot\\
+\nu(e_1 + e_2)  & = & \nu(e_1) \lor \nu(e_2)\\
+\nu(e_1\,e_2)   & = & \nu(e_1)\land \nu(e_2)\\
+\nu(e_1^*)      & = & \top\\
+\end{array}
+
+** Derivadas de ERs
+
+- Definição da derivada
+
+\begin{array}{lcl}
+\partial_{a}(\emptyset)  & = & \emptyset \\
+\partial_{a}(\lambda) & = & \emptyset \\
+\partial_{a}(a)       & = & \lambda \\
+\partial_{a}(b)       & = & \emptyset\,\,\textrm{se }a \neq b\\
+\end{array}
+
+** Derivadas de ERs
+
+- Definição de derivada (continuação)
+
+\begin{array}{lcl}
+\partial_{a}(e_1 + e_2) & = & \partial_a(e_1)+\partial_a(e_2)\\
+\partial_{a}(e_1\,e_2)  & = & \partial_{a}(e_1)\,e_2 + \partial_{a}(e_2),\:\:\textrm{se }\nu(e_1) = \top\\
+\partial_{a}(e_1\,e_2)  & = & \partial_{a}(e_1)\,e_2\:\:\textrm{se }\nu(e_1) = \bot\\
+\partial_{a}(e_1^*)     & = & \partial_{a}(e_1)\,e_1^*\\
+\end{array}
+
+** Derivadas de ERs
+
+- Número de derivadas é finito sobre uma ER $e$ é finito.
+  - Se considerarmos a equivalência de ER
+
+** Derivadas de ERs
+
+- Equivalência de ERs
+
+\begin{array}{cc}
+   e + (e' + e'') \approx (e + e') + e'' & e + e \approx e \\
+   e + e' \approx e' + e & (ee')e'' \approx e(e'e'') \\
+   \emptyset e \approx \emptyset & e \emptyset \approx \emptyset \\
+   e \lambda \approx e  & \lambda e \approx e \\
+   e + \emptyset \approx e & \emptyset + e \approx e\\
+\end{array}
+
+** Derivadas de ERs
+
+- Exemplo: Cálculo da derivada de $(01)^*$.
+
+\begin{array}{lc}
+  \partial_0((01)^*) & = \\
+  \partial_0(01)(01)^* & = \\
+  \partial_0(0)1(01)^* & = \\
+  \lambda 1(01)^* & = \\
+   1(01)^* \\
+\end{array}
+
+** Derivadas de ERs
+
+- Processando strings usando derivadas.
+
+\begin{array}{lcl}
+\widehat{\partial}(e,\lambda) & = & \nu(e)\\
+\widehat{\partial}(e,ay)      & = & \widehat{\partial}(\partial_{a}(e),y)\\
+\end{array}
+
+** Derivadas de ERs
+
+- Além de processar palavras diretamente, podemos construir AFDs diretamente
+  a partir de uma ER.
+
+** Derivadas de ERs
+
+- O AFD correspondente a uma ER $e$ é: $(E,\Sigma,\delta,e,F)$.
+  - $E$: conjunto de derivadas
+  - $\delta(e,a) = e'$ se $\partial_{a}(e) = e'$.
+  - $F = \{e\,|\, \nu(e) = \top\}$.
+
+** Derivadas de ERs
+
+- Exemplo: Construir um AFD para $(01)^*$.
+  - Já calculamos: $\partial_{0}((01)^*) = 1(01)^*$.
+  - $\partial_{1}((01)^*) = \emptyset$.
+
+** Derivadas de ERs
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image1.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+\begin{tikzpicture}
+   \node[state, initial, accepting](s0){$(01)^*$} ;
+   \node[state, right of=s0](s1){$1(01)^*$} ;
+   \node[state, below of=s0](s2){$\emptyset$} ;
+   \draw (s0) edge[above] node{$0$}(s1)
+         (s0) edge[left] node{$1$}(s2) ;
+\end{tikzpicture}
+#+end_src
+
+[[./imgs/image1.png]]
+
+** Derivadas de ERs
+
+- Repetindo o processo para outras ERs.
+  - $\partial_{0}(\emptyset) = \partial_{1}(\emptyset) = \emptyset$.
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image2.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+\begin{tikzpicture}
+   \node[state, initial, accepting](s0){$(01)^*$} ;
+   \node[state, right of=s0](s1){$1(01)^*$} ;
+   \node[state, below of=s0](s2){$\emptyset$} ;
+   \draw (s0) edge[above] node{$0$}(s1)
+         (s0) edge[left] node{$1$}(s2)
+         (s2) edge[loop left] node{$0,1$}(s2);
+\end{tikzpicture}
+#+end_src
+
+[[./imgs/image2.png]]
+
+** Derivadas de ERs
+
+- Repetindo o processo para outras ERs.
+  - $\partial_{0}(1(01)^*) = \emptyset$.
+  - $\partial_{1}(1(01)^*) = (01)^*$.
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image3.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+      \begin{tikzpicture}
+        \node[state, initial, accepting](s0){$(01)^*$} ;
+        \node[state, right of=s0](s1){$1(01)^*$} ;
+        \node[state, below of=s0](s2){$\emptyset$} ;
+        \draw (s0) edge[above, bend left] node{$0$}(s1)
+              (s0) edge[left] node{$1$}(s2)
+              (s2) edge[loop left] node{$0,1$}(s2)
+              (s1) edge[above, bend left] node{$1$}(s0)
+              (s1) edge[above] node{$0$}(s2) ;
+      \end{tikzpicture}
+#+end_src
+
+[[./imgs/image3.png]]
+
+
+* Derivadas em Haskell
+
+** Derivadas em Haskell
+
+- Derivadas são de implementação imediata em Haskell.
+
+** Derivadas em Haskell
+
+- Teste de anulabilidade.
+
+#+begin_src haskell
+nullable :: Regex -> Bool
+nullable Empty = False
+nullable Lambda = True
+nullable (Chr _) = False
+nullable (e1 :+: e2)
+  = nullable e1 || nullable e2
+nullable (e1 :@: e2)
+  = nullable e1 && nullable e2
+nullable (Star e1) = True
+#+end_src
+
+** Derivadas em Haskell
+
+- Antes de apresentar a função de cálculo de derivadas, é interessante
+  introduzir algumas funções para realizar simplificações.
+
+** Derivadas em Haskell
+
+- Simplificando união.
+
+#+begin_src haskell
+(.+.) :: Regex -> Regex -> Regex
+Empty .+. e' = e'
+e .+. Empty  = e
+e .+. e'     = e :+: e'
+#+end_src
+
+** Derivadas em Haskell
+
+- Simplificando concatenação
+
+#+begin_src haskell
+(.@.) :: Regex -> Regex -> Regex
+Empty .@. _ = Empty
+_ .@. Empty = Empty
+Lambda .@. e' = e'
+e .@. Lambda = e
+e .@. e' = e :@: e'
+#+end_src
+
+** Derivadas em Haskell
+
+- Simplificando o fecho de Kleene.
+
+#+begin_src haskell
+star :: Regex -> Regex
+star Empty = Lambda
+star (Star e) = e
+star e = Star e
+#+end_src
+
+** Derivadas em Haskell
+
+- Definição da derivada
+
+#+begin_src haskell
+deriv :: Char -> Regex -> Regex
+deriv _ Empty  = Empty
+deriv _ Lambda = Empty
+deriv a (Chr b)
+  | a == b = Lambda
+  | otherwise = Empty
+deriv a (e1 :+: e2)
+  = deriv a e1 .+. deriv a e2
+deriv a (e1 :@: e2)
+  | nullable e1 = deriv a e1 .@. e2 .+. deriv a e2
+  | otherwise   = deriv a e1 .@. e2
+deriv a (Star e1)
+  = deriv a e1 .@. (star e1)
+#+end_src
+
+** Derivadas em Haskell
+
+- Aceitando uma string.
+
+#+begin_src haskell
+match :: Regex -> String -> Bool
+match e [] = nullable e
+match e (c : cs) = match (deriv c e) cs
+#+end_src
+
+** Derivadas em Haskell
+
+- Construindo um AFD utilizando derivadas
+  - Gerar listas de todas as derivadas.
+  - Construção do AFD a partir das derivadas.
+
+** Derivadas em Haskell
+
+- Gerar todas as derivadas
+
+#+begin_src haskell
+enumerateDerivs :: Regex -> [Regex]
+enumerateDerivs initial = go [initial] [initial]
+  where
+    chars = symbols initial
+    go [] acc = acc
+    go (state:rest) acc =
+        let
+            newStates = nub [deriv c state | c <- chars]
+            unseen = filter (`notElem` acc) newStates
+        in go (rest ++ unseen) (acc ++ unseen)
+#+end_src
+
+** Derivadas em Haskell
+
+- Construindo o AFD
+
+#+begin_src haskell
+derivDFA :: Regex -> DFA Regex
+derivDFA e
+  = DFA {
+      start = initial
+    , delta = delta'
+    , finals = nullable
+    }
+  where
+    initial = simp e
+    states = enumerateDerivs initial
+
+    delta' state char =
+        let e' = deriv char state
+        in if e' `elem` states then e' else Empty
+#+end_src
+
+* Uso do gerador Alex
+
+** Uso do gerador Alex
+
+- A construção de um analisador léxico é uma tarefa automatizável.
+
+** Uso do gerador Alex
+
+- Veremos como usar a ferramenta Alex para construir um analisador a partir de uma especificação.
+  - Especificações Alex são apenas expressões regulares.
+
+** Uso do gerador Alex
+
+- Para exemplificar o uso do Alex, vamos considerar uma linguagem de expressões.
+
+\begin{array}{lcl}
+e & \to  & n \,|\,v\,|\, e + e \,|\, e * e\, (e)\\
+\end{array}
+
+** Uso do gerador Alex
+
+- A sintaxe da linguagem de expressões aritméticas é formada pelos seguintes tokens:
+  - Números: /n/
+  - Variáveis: /v/
+  - Símbolos: /+/, /*/, /(/ e /)/.
+
+** Uso do gerador Alex
+
+- Especificações Alex são formadas por:
+  - Trechos de código Haskell
+  - Definição do /wrapper/ e de macros.
+  - Declaração dos tokens.
+
+** Uso do gerador Alex
+
+- Trechos de código Haskell
+  - Definir cabeçalho do módulo
+  - Tipos e funções.
+
+** Uso do gerador Alex
+
+- Cabeçalho do módulo
+
+#+begin_src haskell
+{
+  {-# OPTIONS_GHC -Wno-name-shadowing #-}
+  module Exp.Frontend.Lexer.Alex.ExpLexer where
+
+  import Control.Monad
+  import Exp.Frontend.Lexer.Token
+}
+#+end_src
+
+** Uso do gerador Alex
+
+- Token composto por:
+  - Lexema e posição
+
+- Definição do tipo =Lexeme=
+
+#+begin_src haskell
+data Lexeme
+  = TNumber Int
+  | TLParen
+  | TRParen
+  | TPlus
+  | TTimes
+  | TEOF
+#+end_src
+
+** Uso do gerador Alex
+
+- Definição do tipo =Token=
+
+#+begin_src haskell
+data Token
+  = Token {
+      pos :: (Int, Int)
+    , lexeme :: Lexeme
+    }
+#+end_src
+
+** Uso do gerado Alex
+
+- A definição do gerador é feita por
+  especificar expressões regulares e as
+  associar aos respectivos valores do tipo =Token=.
+
+** Uso do gerador Alex
+
+- Macros para conjuntos de caracteres.
+
+#+begin_src
+$digit = 0-9            -- digits
+$alpha = [a-zA-Z]       -- alphabetic characters
+#+end_src
+
+** Uso do gerador Alex
+
+- Macros para expressões regulares
+
+#+begin_src
+@identifier = $alpha[$alpha $digit]* -- identifiers
+@number     = $digit+
+#+end_src
+
+** Uso do gerador Alex
+
+- Especificação de tokens.
+
+#+begin_src
+tokens :-
+      -- whitespace and line comments
+      <0> $white+       ;
+      <0> "//" .*       ;
+      -- other tokens
+      <0> @number       {mkNumber}
+      <0> "("           {simpleToken TLParen}
+      <0> ")"           {simpleToken TRParen}
+      <0> "+"           {simpleToken TPlus}
+      <0> "*"           {simpleToken TTimes}
+#+end_src
+
+** Uso do gerador Alex
+
+- Especificação de tokens.
+
+#+begin_src
+      -- multi-line comment
+      <0> "\*"              { nestComment `andBegin` state_comment }
+      <0> "*/"              {\ _ _ -> alexError "Error! Unexpected close comment!" }
+      <state_comment> "\*"  { nestComment }
+      <state_comment> "*/"  { unnestComment }
+      <state_comment> .     ;
+      <state_comment> \n    ;
+#+end_src
+
+** Uso do gerador Alex
+
+- Estado do analisador (aninhamento de comentários)
+
+#+begin_src haskell
+data AlexUserState
+  = AlexUserState {
+       nestLevel :: Int -- comment nesting level
+    }
+
+alexInitUserState :: AlexUserState
+alexInitUserState
+  = AlexUserState 0
+#+end_src
+
+** Uso do gerador Alex
+
+- Definição do token EOF
+
+#+begin_src haskell
+alexEOF :: Alex Token
+alexEOF = do
+  (pos, _, _, _) <- alexGetInput
+  startCode <- alexGetStartCode
+  when (startCode == state_comment) $
+    alexError "Error: unclosed comment"
+  pure $ Token (position pos) TEOF
+#+end_src
+
+** Uso do gerador Alex
+
+- Aninhamento de comentários
+
+#+begin_src haskell
+nestComment :: AlexAction Token
+nestComment input len = do
+  modify $ \s -> s{nestLevel = nestLevel s + 1}
+  skip input len
+#+end_src
+
+** Uso do gerador Alex
+
+- Aninhamento de comentários
+
+#+begin_src haskell
+unnestComment :: AlexAction Token
+unnestComment input len
+  = do
+      s <- get
+      let level = (nestLevel s) - 1
+      put s{nestLevel = level}
+      when (level == 0) $
+        alexSetStartCode 0
+      skip input len
+#+end_src
+
+** Uso do gerador Alex
+
+- Função principal do analisador léxico
+
+#+begin_src haskell
+lexer :: String -> Either String [Token]
+lexer s = runAlex s go
+  where
+    go = do
+      output <- alexMonadScan
+      if lexeme output == TEOF then
+        pure [output]
+      else (output :) <$> go
+#+end_src
+
+** Uso de gerador Alex
+
+- Arquivo =Exp/Frontend/Lexer/Alex/ExpLexer.x= contém a especificação.
+
+- Produzindo o analisador léxico.
+  - Produz o arquivo =ExpLexer.hs=
+
+#+begin_src shell
+alex ExpLexer.x
+#+end_src
+
+** Uso do gerador Alex
+
+- A partir da especificação, o Alex:
+  - Produz um analisador baseado em AFD mínimo para as ERs definidas.
+
+** Uso do gerador Alex
+
+- Permite a definição rápida de analisadores para linguagens reais.
+
+** Uso do gerador Alex
+
+- Problemas
+  - Não há verificação de tipos em ações do analisador.
+  - Necessidade de dominar outra linguagem.
+
+* Concluindo
+
+** Concluindo
+
+- Com isso, concluímos o conteúdo de análise léxica.
+
+- Próxima aula: análise sintática.

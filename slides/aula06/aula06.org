@@ -1,0 +1,491 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: solarized
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Expressões regulares
+#+Author: Construção de compiladores I
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar como utilizar expressões regulares para
+  especificar a estrutura léxica de linguagens.
+
+** Objetivos
+
+- Mostrar como produzir autômatos não determinísticos a partir de expressões regulares.
+
+- Mostrar como obter um autômato determinístico a partir de um não determinístico.
+
+* Expressões regulares
+
+** Expressões regulares
+
+- Forma algébrica para especificar linguagens regulares.
+
+- Linguagens regulares: aceitas por AFDs
+
+** Expressões regulares
+
+- Sintaxe
+
+\begin{array}{lcl}
+e & \to  & \emptyset\:\mid\:\lambda\:\mid\: a\:\mid\:e\,e\:\mid\:e\,+\,e\:\mid\:e^*\\
+\end{array}
+
+** Expressões regulares
+
+- Expressões regulares denotam *linguagens*.
+
+** Expressões regulares
+
+- Semântica:
+
+\begin{array}{lcl}
+\lbrack\!\lbrack \emptyset \rbrack\!\rbrack    & =  & \emptyset\\
+\lbrack\!\lbrack \lambda \rbrack\!\rbrack      & =  & \{\lambda\}\\
+\lbrack\!\lbrack a \rbrack\!\rbrack            & =  & \{a\}\\
+\lbrack\!\lbrack e_1\!e_2 \rbrack\!\rbrack     & =  & \lbrack\!\lbrack e_1\rbrack\!\rbrack\:\lbrack\!\lbrack e_2\rbrack\!\rbrack\\
+\lbrack\!\lbrack e_1\!+\!e_2 \rbrack\!\rbrack  & =  & \lbrack\!\lbrack e_1\rbrack\!\rbrack\!\cup\!\lbrack\!\lbrack e_2\rbrack\!\rbrack\\
+\lbrack\!\lbrack e_1^*\rbrack\!\rbrack  & =  & \lbrack\!\lbrack e_1\rbrack\!\rbrack^*\\
+\end{array}
+
+** Expressões regulares
+
+- Expressões regulares são equivalentes a *autômatos finitos não determinísticos*.
+
+- Equivalência definida pela *construção de Thompson*.
+
+
+* Autômatos não determinísticos
+
+** Autômatos não determinísticos
+
+- Um AFN $M=(E,\Sigma,\delta,I,F)$:
+  - $E$ : conjunto de estados
+  - $\Sigma$: alfabeto
+  - $\delta : E\times\Sigma\to\mathcal{P}(E)$: função de transição.
+  - $I \subseteq E$: conjunto de estados iniciais.
+  - $F\subseteq E$: conjunto de estados finais.
+
+** Autômatos não determinísticos
+
+- Exemplo: $(0+1)^*00$
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image7.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+  \begin{tikzpicture}
+     \node[state,initial]     (s0){$A$} ;
+     \node[state, right of=s0](s1){$B$} ;
+     \node[state, accepting, right of=s1](s2){$E$};
+     \draw (s0) edge[loop above] node{$0,1$} (s0)
+           (s0) edge[above] node{$0$}        (s1)
+           (s1) edge[above] node{$0$}        (s2);
+  \end{tikzpicture}
+#+end_src
+
+[[./imgs/image7.png]]
+
+
+** Autômatos não determinísticos.
+
+- Seja $M=(E,\Sigma,\delta,I,F)$ um AFN.
+
+- O AFD equivalente é $(\mathcal{P}(E),\Sigma,\delta',I, F')$:
+  - $\delta'(X,a) = \bigcup_{e\in X}\delta(e,a)$.
+  - $F' = \{X\,|\, X \cap F = \emptyset\}$.
+
+** Autômatos não determinísticos
+
+- Implementação em Haskell
+
+#+begin_src haskell
+data NFA a
+  = NFA {
+      numberOfStates :: Int
+    , nfaStart :: Set a
+    , nfaDelta :: a -> Char -> Set a
+    , nfaFinals :: Set a
+    }
+#+end_src
+
+** Autômato não determinísticos
+
+- Implementação em Haskell
+
+#+begin_src haskell
+subset :: Ord a => NFA a -> DFA (Set a)
+subset m
+  = DFA {
+      start  = nfaStart m
+    , delta  = \ es c ->
+        Set.unions (map (flip (nfaDelta m) c) (Set.elems es))
+    , finals = \ es -> not (disjoint es (nfaFinals m))
+    }
+#+end_src
+
+* Construção de Thompson
+
+** Construção de Thompson
+
+- Mostra como obter um AFN a partir de uma expressão regular.
+
+- Estratégia utilizada por ferramentas de geração de analisadores léxicos.
+
+** Construção de Thompson
+
+- AFN para $e = \emptyset$.
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image1.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 200 :iminoptions -density 200
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+  \begin{tikzpicture}
+     \node[state,initial]     (s0){$A$} ;
+  \end{tikzpicture}
+#+end_src
+
+[[./imgs/image1.png]]
+
+** Construção de Thompson
+
+- AFN para $e = \lambda$.
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image2.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 200 :iminoptions -density 200
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+  \begin{tikzpicture}
+     \node[state,initial, accepting]     (s0){$A$} ;
+  \end{tikzpicture}
+#+end_src
+
+[[./imgs/image2.png]]
+
+** Construção de Thompson
+
+- AFN para $e = a$.
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image3.png
+#+HEADER: :headers '("\\usepackage{tikz}" "\\usetikzlibrary{arrows,positioning,automata}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+  \tikzset{
+          ->,  % makes the edges directed
+          >=stealth', % makes the arrow heads bold
+          node distance=2.5cm,
+          every state/.style={thick, fill=gray!10},
+          initial text=$\,$
+          }
+  \begin{tikzpicture}
+     \node[state,initial]     (s0){$A$} ;
+     \node[state, right of=s0, accepting]   (s1){$B$} ;
+     \draw (s0) edge[above] node{$a$}        (s1);
+  \end{tikzpicture}
+#+end_src
+
+[[./imgs/image3.png]]
+
+
+** Construção de Thompson
+
+- AFN para $e = e_1 + e_2$.
+
+[[./imgs/image4.png]]
+
+
+** Construção de Thompson
+
+- AFN para $e = e_1\:e_2$.
+
+[[./imgs/image5.png]]
+
+** Construção de Thompson
+
+- AFN para $e = e_1^*$.
+
+[[./imgs/image6.png]]
+
+
+** Construção de Thompson
+
+- Como implementar?
+  - AFNs para casos bases.
+  - Funções para combinar AFNs.
+
+** Construção de Thompson
+
+- AFN para $\emptyset$.
+
+#+begin_src haskell
+emptyNFA :: NFA Int
+emptyNFA
+  = NFA 0 Set.empty
+          (\ _ _ -> Set.empty)
+          Set.empty
+#+end_src
+
+** Construção de Thompson
+
+- AFN para $\{\lambda\}$.
+
+#+begin_src haskell
+lambdaNFA :: NFA Int
+lambdaNFA
+  = NFA 1 one
+          (\ _ _ -> Set.empty)
+          one
+    where
+      one = Set.singleton 1
+#+end_src
+
+** Construção de Thompson
+
+- AFN para $\{a\}$.
+
+#+begin_src haskell
+chrNFA :: Char -> NFA Int
+chrNFA c
+  = NFA 2 zero f one
+    where
+      zero = Set.singleton 0
+      one = Set.singleton 1
+      err = Set.singleton 2
+      f 0 x = if c == x then one
+              else err
+      f _ _ = err
+#+end_src
+
+** Construção de Thompson
+
+- Antes de definir funções para combinar AFNs,
+  precisamos garantir que estes não possuam estados em comum.
+
+** Construção de Thompson
+
+- Para isso, vamos "renomear" estados de um AFN.
+
+#+begin_src haskell
+shift :: Int -> Set Int -> Set Int
+shift n = Set.fromAscList . map (+ n) . Set.toAscList
+#+end_src
+
+** Construção de Thompson
+
+- AFN para $e_1 + e_2$.
+
+#+begin_src haskell
+unionNFA :: NFA Int -> NFA Int -> NFA Int
+unionNFA m1 m2
+  = NFA {
+      numberOfStates = n1 + n2
+    , nfaStart = Set.union (nfaStart m1) (shift n1 (nfaStart m2))
+    , nfaDelta = f
+    , nfaFinals = Set.union (nfaFinals m2) (shift n1 (nfaFinals m2))
+    }
+    where
+      n1 = numberOfStates m1
+      n2 = numberOfStates m2
+      f s c = if s < n1 then nfaDelta m1 s c
+              else shift n1 (nfaDelta m2 (s - n1) c)
+#+end_src
+
+** Construção de Thompson
+
+- AFN para $e_1\:e_2$.
+
+#+begin_src haskell
+concatNFA :: NFA Int -> NFA Int -> NFA Int
+concatNFA m1 m2
+    = NFA {
+        numberOfStates = n1 + n2
+      , nfaStart = newStart
+      , nfaDelta = newDelta
+      , nfaFinals = newFinals
+      }
+      where
+        n1 = numberOfStates m1
+        n2 = numberOfStates m2
+#+end_src
+
+** Construção de Thompson
+
+- AFN para $e_1\:e_2$ (continuação).
+
+#+begin_src haskell
+start1 = nfaStart m1
+final1 = nfaFinals m1
+newStart = if disjoint start1 final1
+           then start1
+            else Set.union start1 (shift n1 final1)
+newFinals = shift n1 final1
+newDelta e c = if e < n1 then
+                 if disjoint (nfaDelta m1 e c) final1
+                 then nfaDelta m1 e c
+                 else Set.union (nfaDelta m1 e c) start1
+               else shift n1 (nfaDelta m2 (e - n1) c)
+#+end_src
+
+** Construção de Thompson
+
+- AFN para $e = e_1^*$.
+
+#+begin_src haskell
+starNFA :: NFA Int -> NFA Int
+starNFA m1
+  = NFA {
+      numberOfStates = numberOfStates m1
+    , nfaStart = nfaStart m1
+    , nfaDelta = newDelta
+    , nfaFinals = nfaStart m1
+    }
+    where
+      newDelta e c
+        = let r = nfaDelta m1 e c
+          in if disjoint r (nfaFinals m1)
+             then r
+             else Set.union r (nfaStart m1)
+#+end_src
+
+** Construção de Thompson
+
+- Convertendo uma ER em um DFA:
+
+#+begin_src haskell
+toDFA :: Regex -> DFA (Set Int)
+toDFA = subset . thompson
+#+end_src
+
+** Construção de Thompson
+
+- Construindo o AFD para um conjunto de REs.
+
+#+begin_src haskell
+lexer :: [Regex] -> DFA (Set Int)
+lexer = subset . foldr unionNFA emptyNFA . map thompson
+#+end_src
+
+** Construção de Thompson
+
+- Apesar de interessante, esse algoritmo produz AFDs **não mínimos.**
+
+- Para execução eficiente, precisamos minimizar o AFD.
+
+* Minimização de AFDs
+
+** Minimização de AFDs
+
+- Dois algoritmos principais:
+  - Construção da partição de estados (Hopcroft)
+  - Brzozowski.
+
+** Minimização de AFDs
+
+- Nesta disciplina, vamos considerar o algoritmo de minimização de Brzozowski.
+  - Possui implementação direta e bom desempenho.
+
+** Minimização de AFDs
+
+- Obtendo lista de estados alcançáveis.
+
+#+begin_src haskell
+reachable :: Ord a => DFA a -> [Char] -> [a]
+reachable (DFA s d _) sigma
+  = Set.toList (go s Set.empty)
+  where
+    go state visited
+      | state `Set.member` visited = visited
+      | otherwise
+          = let
+              visited' = Set.insert state visited
+              nexts = map (d state) sigma
+            in foldr go visited' nexts
+#+end_src
+
+** Minimização de AFDs
+
+- Construção reverso para AFDs.
+
+#+begin_src haskell
+reverseDFA :: Ord a => DFA a -> [a] -> NFA a
+reverseDFA (DFA s d f) allStates =
+    let
+        reversedStart = Set.fromList [s' | s' <- allStates, f s']
+        reversedDelta state c =
+            Set.fromList [s' | s' <- allStates, d s' c == state]
+        reversedFinals = Set.singleton s
+    in NFA (length allStates)
+        reversedStart
+        reversedDelta
+        reversedFinals
+#+end_src
+
+** Minimização de AFDs
+
+- Implementação do algoritmo de Brzozowski
+
+#+begin_src haskell
+brzozowski :: Ord a => DFA a -> [Char] -> [a] -> DFA (Set (Set a))
+brzozowski m sigma allStates
+  = let
+      m1 = subset (reverseDFA m allStates)
+      m2 = reverseDFA m1 (reachable m1 sigma)
+    in subset m2
+#+end_src
+
+** Minimização de AFDs
+
+- Construindo o AFD mínimo para um conjunto de REs.
+
+#+begin_src haskell
+lexer :: [Regex] -> DFA (Set (Set (Set Int)))
+lexer = brzozowski . subset . combine . map thompson
+  where
+    combine = foldr unionNFA emptyNFA
+#+end_src
+
+
+* Concluindo
+
+** Concluindo
+
+- Revisamos REs, AFNs e sua relação com AFDs.
+
+- Apresentamos como construir AFDs a partir de expressões regulares.
+
+** Concluindo
+
+- Próxima aula: Derivadas de expressões regulares e geradores de analisadores léxicos.

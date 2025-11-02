@@ -1,0 +1,309 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Semântica formal
+#+Author: Construção de compiladores I
+
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar o conceito de semântica operacional para especificar interpretadores.
+
+- Mostrar a equivalência entre definições semântica e implementação de interpretadores.
+
+* Introdução
+
+** Introdução
+
+- Nas aulas anteriores, vimos como construir a árvore de sintaxe abstrata a partir do texto do programa.
+  - Análise léxica e sintática
+
+** Introdução
+
+- A partir da árvore de sintaxe abstrata, podemos:
+  - Fazer análise semântica.
+  - Interpretar o código.
+  - Gerar código
+
+** Introdução
+
+- Antes de lidar com a análise semântica, vamos estudar sobre como construir intepretadores.
+  - Motivo: tornar evidente a necessidade da análise semântica.
+
+* Noções de semântica
+
+** Noções de semântica
+
+- Semântica formal: estudo de formalismos matemáticos para determinar o significado de programas.
+
+- Três abordagens principais: denotacional, axiomática e operacional.
+
+** Noções de semântica
+
+- Semântica denotacional.
+  - Modelar o significado do programa usando funções e domínios semânticos.
+  - Vantagens: composicionalidade
+  - Desvantagens: difícil modelar estado.
+
+** Noções de semântica
+
+- Semântica axiomática.
+  - Significado de um programa é o que pode ser provado sobre ele.
+  - Utilizada para demonstrar propriedades de um programa.
+
+** Noções de semântica
+
+- Semântica operacional.
+  - Semântica de programas expressa por meio de relações.
+  - Dois estilos: big-step e small-step
+
+** Noções de semântica
+
+- Semântica big-step
+  - Definição como relações entre programas e seu resultado.
+  - Associa um programa completo e seu respectivo resultado.
+- Ideal para especificar interpretadores.
+
+** Noções de semântica
+
+- Semântica small-step
+  - Definição como relações que mostram a execução passo-a-passo.
+
+- Útil para especificar provas.
+
+** Noções de semântica
+
+- Nosso foco no curso será no uso de semântica operacional big-step.
+
+* Semântica de Exp
+
+** Semântica de Exp
+
+- Sintaxe de Exp:
+
+\begin{array}{lcl}
+e & \to & n \,|\, e + e \,|\, e * e\\
+\end{array}
+
+
+** Semântica de Exp
+
+- Semântica big-step
+
+\begin{array}{ccc}
+  \dfrac{}{n \Downarrow n} &
+  \dfrac{e_1 \Downarrow n_1\,\,\,\,\,e_2 \Downarrow n_2 }
+        {e_1 + e_2 \Downarrow n_1 \oplus n_2}
+  &
+  \dfrac{e_1 \Downarrow n_1 \,\,\,\,\,e_2 \Downarrow n_2 }
+        {e_1 * e_2 \Downarrow n_1 \otimes n_2}\\
+\end{array}
+
+
+* Implementação de Exp
+
+** Implementação de Exp
+
+- Sintaxe em Haskell
+
+#+BEGIN_SRC haskell
+data Value
+  = VInt Int
+
+data Exp
+  = LVal Value
+  | LAdd Exp Exp
+  | LMul Exp Exp
+#+END_SRC
+
+
+** Implementação de Exp
+
+- Semântica big-step
+
+#+BEGIN_SRC haskell
+eval :: Exp -> Either String Value
+eval (LVal v) = Right v
+eval (LAdd l1 l2)
+  = do
+      v1 <- eval l1
+      v2 <- eval l2
+      v1 .+. v2
+eval (LMul l1 l2)
+  = do
+      v1 <- eval l1
+      v2 <- eval l2
+      v1 .*. v2
+#+END_SRC
+
+* Semântica de Line
+
+** Semântica de Line
+
+- Sintaxe de Line
+
+\begin{array}{lcl}
+P & \to  & S\, P\:|\:\lambda\\
+S & \to  & v := E ; \\
+  & \mid & read(E,v);\,|\,print(E);\\
+E & \to  & n \,|\, v \,|\, s\,|\, E + E\,|\, E - E\\
+  & \mid & E * E \\
+  & \mid & E / E \\
+\end{array}
+
+** Semântica de Line
+
+- Diferença entre Exp e Line:
+  - Variáveis e atribuição.
+  - Leitura e impressão em console.
+
+** Semântica de Line
+
+- Do ponto de vista da semântica, variáveis e atribuição são as maiores mudanças.
+
+- Isso nos leva a uma pergunta: o que é uma variável?
+
+** Semântica de Line
+
+- A resposta depende da semântica da linguagem considerada...
+
+** Semântica de Line
+
+- Em linguagens como Python, C e Java, uma variável é um nome para uma região de memória que contém o valor por ela representado.
+
+** Semântica de Line
+
+- Em linguagens como Haskell, ML, Rust e Scala, uma variável representa, por padrão, um valor.
+
+** Semântica de Line
+
+- Em essência, qual a diferença entre essas duas visões?
+
+** Semântica de Line
+
+- Variáveis em Python, Java e C são *mutáveis*, isto é, seu valor pode ser modificado depois de sua definição.
+
+** Semântica de Line
+
+- Variáveis em Haskell, ML, Rust e Scala são *imutáveis*, isto é, seu valor não pode ser modificado.
+  - Rust e Scala, permitem variáveis mutáveis, mas estas devem ser declaradas como mutáveis.
+
+** Semântica de Line
+
+- De um ponto de vista semântico, adicionar variáveis mutáveis é bem direto.
+  - Variáveis imutáveis fazem sentido apenas em linguagens com a noção de escopo.
+
+** Semântica de Line
+
+- Adicionamos um mapeamento finito que associa a cada variável seu valor.
+  - Damos a esse mapeamento o nome de ambiente.
+
+** Semântica de Line
+
+- Representamos um ambiente pela letra grega \sigma.
+- A notação \sigma(v) = n denota que a variável v está associada ao valor n em \sigma.
+- A notação $\sigma[v \mapsto n]$ representa a mudança do valor associado a v para n,
+  sobreescrevendo valores anteriores, ou criando a entrada em \sigma.
+
+** Semântica de Line
+
+- Vamos apresentar apenas as regras relevantes à variáveis, considerando sua versão
+  mutável.
+
+- Demais regras da semântica são similares às de Exp.
+
+** Semântica de Line
+
+- Sequência de comandos
+
+\begin{array}{c}
+  \dfrac{\sigma ; S \Downarrow \sigma_1\,\,\,\,\,\sigma_1 ; P \Downarrow \sigma'}
+        {\sigma ; S\,P\Downarrow \sigma'}\\ \\
+\end{array}
+
+** Semântica de Line
+
+- Atribuição e uso de variáveis
+
+\begin{array}{c}
+  \dfrac{\sigma ; e \Downarrow n\,\,\,\,\sigma' = \sigma[v \mapsto n]}
+        {\sigma ; v := e \Downarrow \sigma'} \\ \\
+  \dfrac{\sigma(v) = n}{\sigma ; v \Downarrow n}
+\end{array}
+
+* Implementação de Line
+
+** Implementação de Line
+
+- Definição do ambiente
+
+#+begin_src haskell
+type Env = Map Var Value
+#+end_src
+
+** Implementação de Line
+
+- Tipo =Map=
+  - Representação de mapeamentos finitos (tabelas de hash)
+  - Definido no módulo Data.Map, presente na biblioteca containers.
+
+** Implementação de Line
+
+- Tipo =Map=
+  - Função =empty=: cria um Map vazio.
+  - Função =insert k v m=: insere o valor v com chave k no map m.
+  - Função =lookup k m=: procura o valor associado a chave k em m.
+
+** Implementação de Line
+
+- Interpretando a sequência de comandos
+
+#+begin_src haskell
+evalLine :: Line -> IO (Either String Env)
+evalLine (Line ss)
+  = foldM step (Right Map.empty) ss
+  where
+    step ac@(Left _) _ = pure ac
+    step (Right env) s1 = evalS1 env s1
+#+end_src
+
+** Implementação de Line
+
+- Interpretando a atribuição.
+
+#+begin_src haskell
+evalS1 :: Env -> S1 -> IO (Either String Env)
+evalS1 env (LAssign v e)
+  = case evalE1 env e of
+      Left err -> pure $ Left err
+      Right val -> pure (Right $ Map.insert v val env)
+#+end_src
+
+** Implementação de Line
+
+- Interpretando o acesso a variáveis.
+
+#+begin_src haskell
+evalE1 :: Env -> E1 -> Either String Value
+evalE1 env (LVar v)
+  = case Map.lookup v env of
+      Just val -> Right val
+      Nothing -> Left ("Undefined variable: " ++ pretty v)
+#+end_src
+
+* Concluindo
+
+** Concluindo
+
+- Nesta aula apresentamos uma introdução à construção de interpretadores e
+  semântica formal.
+
+- Próximas aulas: introdução à análise semântica.

@@ -1,0 +1,125 @@
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Geradores de analisadores LALR
+#+Author: Construção de compiladores I
+
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar o gerador de analisadores sintáticos LALR para Haskell.
+
+* Introdução
+
+** Introdução
+
+- Nas aulas anteriores, vimos alguns algoritmos LR.
+  - Em especial, o LALR.
+
+- Este algoritmo consegue realizar o parsing de construções
+  de linguagens de programação.
+
+** Introdução
+
+- Nesta aula, veremos uma ferramenta para produzir estes analisadores automaticamente.
+
+- Este tipo de ferramenta é disponível em praticamente todas as linguagens de programação.
+
+** Introdução
+
+- Em Haskell, o analisador que utilizaremos é o Happy, capaz de produzir analisadores LALR a partir de gramáticas.
+
+** Introdução
+
+- Apresentaremos a linguagem do Happy, utilizando uma pequena linguagem de expressões.
+
+* Especificações Happy
+
+** Especificações Happy
+
+- Especificações são formadas por:
+  - Trechos de código Haskell
+  - Declarações de tokens, erro e nome do parser
+  - Definição da gramática.
+
+** Especificações Happy
+
+- Trechos de código Haskell são usados para:
+  - Definir funções auxiliares.
+  - Definir tipos de dados a serem usados pelo parser.
+
+** Especificações Happy
+
+- Declarações
+
+#+begin_src
+%name expParser
+%tokentype { Token }
+%error { parseError }
+#+end_src
+
+** Especificações Happy
+
+- Definições de tokens
+
+#+begin_src
+%token
+     int  {TNumber $$}
+     var  {TVar $$}
+     '+'  {TAdd}
+     '*'  {TMul}
+     '('  {TLParen}
+     ')'  {TRParen}
+#+end_src
+
+** Especificações Happy
+
+- Definição da gramática
+
+#+begin_src
+Expr   : Term '+' Expr   {Add $1 $3}
+       | Term            {$1}
+
+Term   : Factor '*' Term {Mul $1 $3}
+       | Factor          {$1}
+
+Factor : int             {Number $1}
+       | var             {Var $1}
+       | '(' Expr ')'    {$2}
+#+end_src
+
+** Especificações Happy
+
+- Podemos produzir um parser LALR a partir da especificação mostrada.
+
+#+begin_src
+happy Parser.y -o Parser.hs
+#+end_src
+
+** Especificações Happy
+
+- Produzindo o conjunto de itens
+  - Produzindo arquivo Parser.info
+
+#+begin_src
+happy -i Parser.y
+#+end_src
+
+* Concluindo
+
+** Concluindo
+
+- Nesta aula apresentamos o gerador de analisadores sintáticos Happy.
+
+- Mostramos como adicionar suporte a marcação de linhas / colunas.
+
+** Concluindo
+
+- Próximas aulas: Semântica formal e interpretadores.

@@ -464,7 +464,7 @@ ifOrIdentDFA = unionDFA ifDFA identDFA
 
 ** Concluindo
 
-- Apresentamos a linguagem IMP que será usada neste curso.
+- Apresentamos a linguagem Exp que será usada neste curso.
 
 - Discutimos como implementar análise léxica.
 

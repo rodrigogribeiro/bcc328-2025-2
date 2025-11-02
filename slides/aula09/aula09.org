@@ -1,0 +1,522 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Análise LL(1)
+#+Author: Construção de compiladores I
+
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar os conjuntos first e follow e seu uso para definir gramáticas LL(1)
+
+- Apresentar uma implementação de first e follow em Haskell.
+
+* Gramáticas LL(1)
+
+** Gramáticas LL(1)
+
+- Classe de gramáticas que admitem analisadores sem backtracking
+
+- LL(1) significa
+  - *L*eft to right: entrada analisada da esquerda para direita.
+  - *L*eft most derivation: construção de derivação mais a esquerda.
+  - Uso de *1* token da entrada para decidir a derivação.
+
+** Gramáticas LL(1)
+
+- Como determinar se uma gramática é LL(1)?
+  - Vamos usar os conjuntos First e Follow.
+
+* First e Follow
+
+** First e Follow
+
+- $first(\alpha)$: conjunto de terminais que iniciam sentenças derivadas a partir de $\alpha$.
+
+- $\alpha \in (V\cup \Sigma)^*$.
+
+** First e Follow
+
+- $first(a) = \{a\}$, se $a \in \Sigma$.
+- $\lambda\in first(A)$ se $A\to\lambda \in R$.
+
+** First e Follow
+
+- Se $A \in V$ e
+- $A \to Y_1\,Y_2\,...\,Y_k \in R$ e
+- $a\in first(Y_i)$ e
+- $\forall j. 1 \leq j \leq i - 1. \lambda \in first(Y_j)$ então $a \in first(A)$.
+
+** First e Follow
+
+- Aplique estas regras enquanto for possível.
+
+** First e Follow
+
+- Calcular os conjuntos $first$ para:
+
+\begin{array}{lcl}
+E  & \to & TE'\\
+E' & \to & \textbf{+}TE'\,|\,\lambda\\
+T  & \to & FT' \\
+T' & \to & \textbf{*}FT'\,|\,\lambda\\
+F  & \to & \textbf{(}E\textbf{)}\,|\,\textbf{id}
+\end{array}
+
+** First e Follow
+
+- $first(E) = first(T) = first(F)$
+
+- $first(F) = \{\textbf{(}, \textbf{id}\}$
+
+** First e Follow
+
+- $first(E') = \{\textbf{+},\lambda\}$
+
+- $first(T') = \{\textbf{*},\lambda\}$
+
+** First e Follow
+
+- $follow(A)$: conjunto de terminais que aparecem logo a direita de $A$ em alguma derivação.
+
+- $A \in V$.
+
+** First e Follow
+
+- $ $\in follow(P)$
+
+- Se $A \to \alpha B \beta \in R$ então:
+
+\begin{array}{l}
+first(\beta) - \{\lambda\} \subseteq follow(B)
+\end{array}
+
+** First e Follow
+
+- Se $A \to \alpha B$ ou $A \to \alpha B \beta$, em que $\lambda \in first(\beta)$ então:
+
+\begin{array}{l}
+follow(A) \subseteq follow(B)
+\end{array}
+
+** First e Follow
+
+- Aplique estas regras enquanto possível.
+
+** First e Follow
+
+- Calcular os conjuntos $follow$ para:
+
+\begin{array}{lcl}
+E  & \to & TE'\\
+E' & \to & \textbf{+}TE'\,|\,\lambda\\
+T  & \to & FT' \\
+T' & \to & \textbf{*}FT'\,|\,\lambda\\
+F  & \to & \textbf{(}E\textbf{)}\,|\,\textbf{id}
+\end{array}
+
+
+** First e Follow
+
+- $ $\in follow(E)$:
+  - $E$ é a variável inicial da gramática.
+
+** First e Follow
+
+- *)* $\in follow(E)$:
+  - Devido a produção $F \to (E)$
+  - Regra: $A \to \alpha B \beta$ então $first(\beta) \subseteq follow(B)$.
+    - Neste caso, $\beta = \textbf{)}$
+
+** First e Follow
+
+- Logo, temos que follow(E) = {*)*,*$*}.
+
+* Gramáticas LL(1)
+
+** Gramáticas LL(1)
+
+- Usando os conjuntos first e follow podemos definir gramáticas LL(1).
+
+** Gramáticas LL(1)
+
+- Para isso, vamos definir o conceito de $first^{+}$:
+
+\begin{array}{l}
+first^{+}(A\to\alpha) = first(\alpha)\:\:\:\lambda\not\in first(\alpha)\\
+first^{+}(A\to\alpha) = first(\alpha)\cup follow(A)\:\:\:\lambda\in first(\alpha)\\
+\end{array}
+
+** Gramáticas LL(1)
+
+- Dizemos que uma gramática é LL(1) se:
+
+\begin{array}{l}
+\forall 1 \leq i, j \leq n, i \neq j \to \\ first^{+}(A\to\alpha_i)\cap first^{+}(A\to\alpha_j) = \emptyset\\
+\end{array}
+
+** Gramáticas LL(1)
+
+- Gramáticas LL(1) admitem analisadores sem retrocesso.
+
+- Veremos como tal analisador pode ser contruído.
+
+* Análise preditiva
+
+** Análise preditiva
+
+- Determina a produção da gramática a ser usada com base no próximo
+  token da entrada.
+
+** Análise preditiva
+
+- Analisadores preditivos utilizam uma tabela para decidir qual
+  regra será utilizada.
+
+- Tabela construída utilizando os conjuntos first e follow.
+
+** Análise preditiva
+
+- Tabela indexada por $V$ e símbolos de $\Sigma$ mais o marcador de final de entrada.
+
+- O símbolo $ marca o final da entrada.
+
+** Análise preditiva
+
+- Tabela armazena produções da gramática.
+
+- Entrada $M[A,a]$ armazena a regra a ser utilizada se $a\in first(\alpha)$.
+
+* Construção da tabela
+
+** Construção da tabela
+
+- Dada uma gramática $G$, calcule os conjuntos first e follow de cada não terminal de $G$.
+
+- Para cada regra $A \to \alpha$ da gramática, faça os seguintes passos:
+
+** Construção da tabela
+
+- Para cada $a\in first(A)$, inclua $A \to \alpha$ em $M[A,a]$.
+
+- Se $\lambda\in first(\alpha)$, inclua $A\to \alpha$ em $M[A,b]$ para cada $b\in follow(A)$.
+
+** Construção da tabela
+
+- Se $\lambda\in first(\alpha)$ e $ $\in follow(A)$, coloque $A \to \alpha \in$ M[A,$].
+
+** Construção da tabela
+
+- Gramática de exemplo
+
+\begin{array}{lcl}
+E  & \to & TE'\\
+E' & \to & \textbf{+} TE'\,|\, \lambda\\
+T  & \to & FT'\\
+T' & \to & \textbf{*}FT'\,|\,\lambda\\
+F  & \to & \textbf{(}E\textbf{)}\,|\,\textbf{id}\\
+\end{array}
+
+** Construção da tabela
+
+- first(F) = first (T) = first(E) = $\{(, id\}$.
+
+- first(E') = $\{+,\lambda\}$.
+
+- first(T') = $\{*,\lambda\}$.
+
+** Construção da tabela
+
+- follow(E) = follow(E') = {),$}.
+
+- follow(T) = follow(T') = {+,),$}.
+
+- follow(F) = {+, *, ), $}.
+
+** Construção da tabela
+
+- Produção $E \to TE'$.
+  - first(TE') = first(T) = {(,id}.
+  - $M[E,id] = M[E,(] = E \to TE'$.
+
+** Construção da tabela
+
+- Produção $E' \to +TE'$.
+  - $first(+TE') = {+}$.
+  - $M[E',+] = E' \to +TE'$.
+
+** Construção da tabela
+
+- Produção $E' \to \lambda$.
+  - $first(\lambda) = \lambda$.
+  - follow(E') = {),$}.
+  - M[E',)] = M[E',$] = $E'\to\lambda$
+
+** Construção da tabela
+
+- Produção $T \to FT'$
+  - $first(T) = first(FT') = \{(,id\}$.
+  - $M[T,(] = M[T,id] = T \to FT'$.
+
+** Construção da tabela
+
+- Produção $T' \to *FT'$
+  - $first(*FT') =\{*\}$.
+  - $M[T',*] = T' \to FT'$.
+
+** Construção da tabela
+
+- Produção $T' \to \lambda$
+  - $first(\lambda) = \lambda$
+  - follow(T') = {+,),$}.
+  - M[T',+] = M[T',)] = M[T',$] = $T'\to \lambda$.
+
+** Construção da tabela
+
+- Produção $F \to id$
+  - first(id) = {id}
+  - M[F,id] = id
+
+** Construção da tabela
+
+- Produção $F \to (E)$
+  - first((E)) = {(}
+  - $M[F,(] = F \to (E)$
+
+* Análise preditiva
+
+** Análise preditiva
+
+- O algoritmo utiliza:
+  - Tabela
+  - Pilha
+
+** Análise preditiva
+
+- Estrutura do analisador
+
+[[./imgs/predictive.png]]
+
+
+** Análise preditiva
+
+- Inicialização
+  - Entrada w$
+  - Pilha: Símbolo de partida no topo, $ no fundo.
+
+** Análise preditiva
+
+- Seja $X$ o símbolo de topo da pilha.
+- Seja $a$ o primeiro token da entrada.
+- Se $X = a$, desempilhe $X$ e obtenha próximo token.
+
+** Análise preditiva
+
+- Se $X$ é um não terminal, seja $r = M[X,a]$.
+
+- Se $r$ é erro, pare.
+
+- Se $r = X \to Y_1 ... Y_k$
+  - Desempilhe $X$.
+  - Empilhe $Y_k ... Y_1$.
+
+** Análise preditiva
+
+- Vamos considerar a gramática
+
+\begin{array}{lcl}
+E  & \to & TE'\\
+E' & \to & \textbf{+} TE'\,|\, \lambda\\
+T  & \to & FT'\\
+T' & \to & \textbf{*}FT'\,|\,\lambda\\
+F  & \to & \textbf{(}E\textbf{)}\,|\,\textbf{id}\\
+\end{array}
+
+** Análise preditiva
+
+- Vamos considerar a string id + id.
+
+** Análise preditiva
+
+- Inicialização
+  - Entrada: id + id$
+  - Pilha: E$
+
+** Análise preditiva
+
+- Temos que:
+  - $X = E$
+  - $a = id$
+
+** Análise preditiva
+
+- Temos que $M[E,id]= E \to TE'$
+  - Entrada: id+id$
+  - Pilha: TE'$
+
+** Análise preditiva
+
+- Temos que:
+  - $X = T$
+  - $a = id$
+
+** Análise preditiva
+
+- Temos que $M[T,id] = T\to FT'$
+  - Entrada: id+id$
+  - Pilha: FT'E'$.
+
+** Análise preditiva
+
+- Temos que:
+  - $X = F$
+  - $a = id$
+
+** Análise preditiva
+
+- Temos que $M[F,id] = F \to id$
+  - Entrada: id + id$
+  - Pilha: idT'E'$.
+
+** Análise preditiva
+
+- Temos que:
+  - $X=id$.
+  - $a = id$.
+
+** Análise preditiva
+
+- Como $X = a$, desempilhamos $X$ e obtemos próximo token.
+  - Entrada: +id$
+  - Pilha: T'E'$.
+
+** Análise preditiva
+
+- Temos que:
+  - $X = T'$.
+  - $a = +$.
+
+** Análise preditiva
+
+- Temos que $M[T',+] = T'\to\lambda$.
+  - Entrada: +idE
+  - Pilha: E'$.
+
+** Análise preditiva
+
+- Temos que:
+  - $X = E'$.
+  - $a = +$.
+
+** Análise preditiva
+
+- Temos que $M[E',+] = E'\to + TE'$.
+  - Entrada: +id$
+  - Pilha: +TE'$
+
+** Análise preditiva
+
+- Temos que
+  - $X = +$
+  - $a = +$
+
+** Análise preditiva
+
+- Como $X = a$, desempilhamos $X$ e obtemos o próximo token.
+  - Entrada: id$.
+  - Pilha: TE'$.
+
+** Análise preditiva
+
+- Temos que
+  - $X = T$
+  - $a = id$
+
+** Análise preditiva
+
+- Temos que $M[T,id] = T\to FT'$
+  - Entrada: id$
+  - Pilha: FT'E'$
+
+** Análise preditiva
+
+- Temos que
+  - $X = F$
+  - $a = id$
+
+** Análise preditiva
+
+- Temos que $M[F,id] = F \to id$
+  - Entrada: id$
+  - Pilha: idT'E'$.
+
+** Análise preditiva
+
+- Temos que
+  - $X = id$.
+  - $a = id$.
+
+** Análise preditiva
+
+- Como $X = a$, desempilhamos $X$ e obtemos o próximo token.
+  - Entrada: $
+  - Pilha: T'E'$.
+
+** Análise preditiva
+
+- Temos que:
+  - $X = T'$.
+  - a = $.
+
+** Análise preditiva
+
+- Temos que M[T',$] = $T'\to\lambda$:
+  - Entrada: $
+  - Pilha: E'$
+
+
+** Análise preditiva
+
+- Temos que:
+  - $X = E'$.
+  - a = $.
+
+
+** Análise preditiva
+
+- Temos que M[E',$] = $E'\to\lambda$:
+  - Entrada: $
+  - Pilha: $
+
+** Análise preditiva
+
+- Temos que:
+  - X = $
+  - a = $
+
+** Análise preditiva
+
+- como $X = a$, desempilhamos $X$ e como não há próximo token o algoritmo encerra com sucesso.
+
+* Concluindo
+
+** Concluindo
+
+- Nesta aula:
+  - Apresentamos os conjuntos first e follow.
+  - Apresentamos como construir a tabela LL(1).
+  - Apresentamos o algoritmo de análise preditiva.
+
+** Concluindo
+
+- Próxima aula: Parsing expression grammars.
+
+

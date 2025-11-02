@@ -1,0 +1,587 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Análise sintática
+#+Author: Construção de compiladores I
+
+* Objetivos
+
+** Objetivos
+
+- Introduzir a segunda etapa do front-end: a análise sintática.
+
+- Introduzir o conceito de analisadores top-down e bottom-up.
+
+** Objetivos
+
+- Apresentar a técnica de análise sintática descendente recursiva.
+
+* Análise sintática
+
+** Análise sintática
+
+- Responsável por determinar se o programa atende as restrições sintáticas
+  da linguagem.
+
+** Análise sintática
+
+- Regras sintáticas de uma linguagem são expressas utilizando gramáticas livres de contexto.
+
+** Análise sintática
+
+- Porque utilizar GLCs e não ERs?
+  - ERs não são capazes de representar construções simples de linguagens.
+
+** Análise sintática
+
+- Vamos considerar um fragmento de expressões formado por variáveis, constantes inteiras
+  adição, multiplicação.
+
+** Análise sintática
+
+- A seguinte ER representa essa linguagem:
+
+\begin{array}{c}
+base = [a..z]([a..z] | [0..9])^* \\
+base((+|*)base)^*
+\end{array}
+
+** Análise sintática
+
+- A ER anterior aceita palavras como $a * b + c$.
+
+- Porém, como determinar a precedência entre operadores?
+
+** Análise sintática
+
+- Podemos usar a precedência usual da aritmética.
+
+- Porém, não é possível impor uma ordem diferente de avaliação.
+  - Para isso, precisamos de parêntesis.
+
+** Análise sintática
+
+- Ao incluir parêntesis, temos um problema:
+  - Como expressar usando ER que parêntesis estão corretos?
+
+** Análise sintática
+
+- Pode-se provar que a linguagem de parêntesis balanceados não é regular.
+  - Usando o lema do bombeamento.
+  - Estrutura similar a $\{0^n1^n\,|\,n\geq 0\}$.
+
+** Análise sintática
+
+- Dessa forma, precisamos utilizar GLCs para representar a estrutura sintática
+  de linguagens.
+
+** Análise sintática
+
+- Antes de apresentar técnicas de análise sintática, vamos revisar alguns
+  conceitos sobre GLCs.
+
+* Gramáticas Livres de Contexto
+
+** Gramáticas livres de contexto
+
+- Uma GLC é $G=(V,\Sigma,R,P)$, em que
+  - $V$: conjunto de variáveis (não terminais)
+  - $\Sigma$: alfabeto (terminais)
+  - $R \subseteq V\times (V\cup\Sigma)^*$: regras (produções).
+  - $P\in V$: variável de partida.
+
+** Gramáticas livres de contexto
+
+- Gramática de expressões
+
+\begin{array}{lcl}
+E & \to & (E) \,|\, E + E \,|\, E * E\,|\, num\,|\,var\\
+\end{array}
+
+** Gramáticas livres de contexto
+
+- $V = \{E\}$
+- $\Sigma = \{num, var, (, ), *, +\}$
+- $R$: conjunto de regras da gramática.
+
+** Gramáticas livres de contexto
+
+- Determinamos se uma palavra pertence ou não à linguagem
+  de uma gramática construindo uma *derivação*
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow &
+\end{array}
+
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E + E\\
+E + E   \\
+\end{array}
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E + E\\
+E + E   & \Rightarrow & \textbf{regra } E \to num\\
+\end{array}
+
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E + E\\
+E + E   & \Rightarrow & \textbf{regra } E \to num\\
+num + E \\
+\end{array}
+
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E + E\\
+E + E   & \Rightarrow & \textbf{regra } E \to num\\
+num + E & \Rightarrow & \textbf{regra } E \to E * E\\
+num + E * E\\
+\end{array}
+
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E + E\\
+E + E   & \Rightarrow & \textbf{regra } E \to num\\
+num + E & \Rightarrow & \textbf{regra } E \to E * E\\
+num + E * E & \Rightarrow & \textbf{regra } E \to num\\
+\end{array}
+
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E + E\\
+E + E   & \Rightarrow & \textbf{regra } E \to num\\
+num + E & \Rightarrow & \textbf{regra } E \to E * E\\
+num + E * E & \Rightarrow & \textbf{regra } E \to num\\
+num + num * E \\
+\end{array}
+
+
+** Gramáticas livres de contexto
+
+- Exemplo: Derivação de $num + num * num$.
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E + E\\
+E + E   & \Rightarrow & \textbf{regra } E \to num\\
+num + E & \Rightarrow & \textbf{regra } E \to E * E\\
+num + E * E & \Rightarrow & \textbf{regra } E \to num\\
+num + num * E & \Rightarrow & \textbf{regra } E \to num \\
+num + num * num
+\end{array}
+
+** Gramáticas livres de contexto
+
+- O exemplo anterior foi de uma *derivação mais à esquerda*
+  - Expande-se o não terminal mais a esquerda.
+
+** Gramáticas livres de contexto
+
+- Note que essa gramática de expressões permite:
+
+\begin{array}{lcl}
+E       & \Rightarrow & \textbf{regra } E\to E * E\\
+E * E   \\
+\end{array}
+
+** Gramáticas livres de contexto
+
+- Com isso temos *duas* derivações distintas para a mesma palavra.
+
+- Isso torna a gramática de exemplo *ambígua*.
+
+** Gramáticas livres de contexto
+
+- Árvores de derivação: representação hierárquica da derivação.
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image1.png
+#+HEADER: :headers '("\\usepackage{tikz,tikz-qtree}" "\\usetikzlibrary{trees}")
+#+HEADER: :fit yes :imoutoptions -geometry 400 :iminoptions -density 400
+#+begin_src latex
+\begin{tikzpicture}
+\Tree [.E [.E num ]
+          +
+          [.E  [.E num ]
+               *
+               [.E num ] ] ]
+\end{tikzpicture}
+#+end_src
+
+[[./imgs/image1.png]]
+
+** Gramáticas livres de contexto
+
+- Em algumas situações é necessário modificar regras de uma gramática para usar certas técnicas de análise sintática.
+
+- Veremos algumas dessas técnicas.
+
+* Transformações de gramáticas
+
+** Transformações de gramáticas
+
+- Fatoração à esquerda: Evitar mais de uma regra com o mesmo prefixo
+
+** Transformações de gramáticas
+
+- Exemplo:
+
+\begin{array}{lcl}
+  A & \to & xz \,|\, xy\,|\,v
+\end{array}
+
+- pode ser transformada em:
+
+\begin{array}{lcl}
+  A & \to & xZ\,|\,v\\
+  Z & \to & z \,|\,y
+\end{array}
+
+** Transformações de gramáticas
+
+- Introdução de prioridades.
+  - Problema comum em linguagens de programação com operadores.
+  - Impor ordem de precedência na ausência de parêntesis.
+
+** Transformações de gramáticas
+
+- Forma geral para introduzir prioridades:
+  - $E_i$: expressões com precedência de nível $i$.
+  - Maior precedência: mais profundo.
+
+\begin{array}{lcl}
+E_i & \to & E_{i + 1} \,|\, E_i Op_i E_{i + 1}
+\end{array}
+
+** Transformações de gramáticas
+
+- Eliminar recursão à esquerda
+  - Transformar em recursão à direita.
+
+\begin{array}{lcl}
+A & \to & Ay_1\,|\,...\,|\,Ay_n\,|\,w_1\,|\,...\,|\,w_k\\
+\end{array}
+
+** Transformações de gramáticas
+
+- Pode ser transformada em
+
+\begin{array}{lcl}
+A & \to & w_1Z\,|\,...\,|\,w_kZ\,|\,w_1\,...\,|\,w_k\\
+Z & \to & y_1Z\,|\,...\,|\,y_nZ\,|\,y_1\,...\,|\,y_n\\
+\end{array}
+
+** Transformações de gramáticas
+
+- Exemplo:
+  - $*$ tem prioridade maior que $+$
+
+\begin{array}{lcl}
+E & \to & num \,|\,var\,|\,(E)\,|\,E+E\,|\,E * E\\
+\end{array}
+
+
+** Transformações de gramáticas
+
+- Exemplo:
+  - $*$ tem prioridade maior que $+$
+
+\begin{array}{lcl}
+E_1 & \to & E_2\,|\,E_1 + E_2\\
+E_2 & \to & E_3\,|\,E_2 * E_3\\
+E_3 & \to & num\,|\,var\,|\,(E_1)\\
+\end{array}
+
+
+* Análise sintática
+
+** Análise sintática
+
+- Dois tipos de algoritmos:
+  - Análise sintática top-down
+  - Análise sintática bottom-up
+
+** Análise sintática
+
+- Analisador sintático top-down
+  - Inicia a partir do símbolo de partida da gramática.
+  - A cada passo, escolhe um não terminal para expandir até
+    - Obter o programa de entrada.
+    - Encontrar um erro.
+
+** Análise sintática
+
+- Analisador sintático bottom-up
+  - Inicia a partir das folhas
+  - Encontra substrings da palavra e encontra um lado direito de regra correspondente.
+
+** Análise sintática
+
+- Nesta aula, vamos focar em uma técnica top-down.
+  - Analisador sintático descendente recursivo.
+
+* Análise descendente
+
+** Análise descendente
+
+- Técnica simples para codificação manual de analisadores sintáticos.
+
+- Gramáticas são representadas por um conjunto de funções
+  - Uma função para cada não terminal.
+
+** Análise descendente
+
+- Analisador para $A \to X_1 ... X_n$:
+  - Para $i = 1$ até $n$
+    - Se $X_i$ for uma variável, chame a função correspondente a $X_i$.
+    - Se $X_i$ for um terminal, verifique se ele é igual ao primeiro token da entrada.
+
+** Análise descendente
+
+- Vantagem:
+  - Codificação simples e de fácil compreensão.
+
+- Problemas:
+  - Não permite gramática com recursão à esquerda.
+
+** Análise descendente
+
+- Em Haskell, analisadores descendentes são codificados por combinadores.
+
+** Análise descendente
+
+- Combinadores são uma EDSL para expressar gramáticas.
+  - Dúzias de bibliotecas: =megaparsec=, =parser-combinators=, =uu-parselib=, etc...
+
+** Análise descendente
+
+- Veremos uma implementação simples de uma EDSL para gramáticas.
+
+** Análise descendente
+
+- Representação de parsers
+
+#+begin_src haskell
+newtype Parser s a =
+  Parser { runParser :: [s] -> [(a,[s])] }
+#+end_src
+
+** Análise descendente
+
+- Parsers são functores
+
+#+begin_src haskell
+instance Functor (Parser s) where
+  fmap f p = Parser (\ s -> [(f x, s') | (x,s') <- runParser p s])
+#+end_src
+
+** Análise descendente
+
+- Parsers são applicatives
+
+#+begin_src haskell
+instance Applicative (Parser s) where
+  pure  a = Parser (\ts -> [(a, ts)])
+  p1 <*> p2 = Parser (\ s -> [(f x, s2) | (f, s1) <- runParser p1 s,
+                                          (x, s2) <- runParser p2 s1])
+#+end_src
+
+** Análise descendente
+
+- Parsers são alternatives
+
+#+begin_src haskell
+instance Alternative (Parser t) where
+  empty = Parser (\ _ -> [])
+  p1 <|> p2 = Parser (\ s -> runParser p1 s ++ runParser p2 s)
+#+end_src
+
+** Análise descendente
+
+- Parsers são mônadas
+
+#+begin_src haskell
+instance Monad (Parser t) where
+  return =  pure
+  p >>= f  = Parser (\ts -> concat [ runParser (f a) cs' |
+                                     (a,cs') <- runParser p ts ])
+#+end_src
+
+** Análise descendente
+
+- Processando o primeiro token da entrada
+
+#+begin_src haskell
+item :: Parser t t
+item = Parser (\ ts ->
+                 case ts of
+                   []     -> []
+                   (c:cs) -> [(c,cs)])
+#+end_src
+
+** Análise descendente
+
+- Processando um token que satisfaz uma condição.
+
+#+begin_src haskell
+sat :: (t -> Bool) -> Parser t t
+sat p = do
+          t <- item
+          if p t then return t else mzero
+#+end_src
+
+** Análise descendente
+
+- Processando um certo token.
+
+#+begin_src haskell
+symbol :: Eq s => s -> Parser s s
+symbol c = sat (c ==)
+#+end_src
+
+** Análise descendente
+
+- Devido a lazy evaluation, podemos entender recursão à esquerda em expressões como uma lista de separadores.
+
+- Ideia sumarizada pela ER: $E(op\:E)^*$
+
+** Análise descendente
+
+- Função =chainl=
+
+#+begin_src haskell
+chainl  ::  Parser s a -> Parser s (a -> a -> a) -> Parser s a
+chainl pe po  =  h <$> pe <*> many (j <$> po <*> pe)
+  where j op x  =  (`op` x)
+        h x fs  =  foldl (flip ($)) x fs
+#+end_src
+
+** Análise descendente
+
+- Automatizando parsers de expressões
+
+#+begin_src haskell
+type Op s a = (s, a -> a -> a)
+
+gen :: Eq s => [Op s a] -> Parser s a -> Parser s a
+gen ops p = chainl p (choice (map f ops))
+  where
+    f (s,c) = const c <$> symbol s
+#+end_src
+
+** Análise descendente
+
+- Tipo do token
+
+#+begin_src haskell
+data Token
+  = Id String
+  | Number Int
+  | Add
+  | Mult
+  | LParen
+  | RParen
+  deriving (Eq, Show)
+#+end_src
+
+** Análise descendente
+
+- Tipo de expressões
+
+#+begin_src haskell
+data Expr
+  = Var String
+  | Lit Int
+  | Expr :+: Expr
+  | Expr :*: Expr
+  deriving (Eq, Show)
+#+end_src
+
+** Análise descendente
+
+- Criando o parser de expressões
+
+#+begin_src haskell
+exprParser :: Parser Token Expr
+exprParser = addtable `gen` termParser
+  where
+    addtable = [(Add, (:+:))]
+#+end_src
+
+** Análise descendente
+
+- Parser para termos
+
+#+begin_src haskell
+termParser :: Parser Token Expr
+termParser = multable `gen` factParser
+  where
+    multable = [(Mult, (:*:))]
+#+end_src
+
+** Análise descendente
+
+- Parser para fatores
+
+#+begin_src haskell
+factParser :: Parser Token Expr
+factParser = numParser  <|>
+             varParser  <|>
+             parenExpr
+  where
+    parenExpr = pack lparen exprParser rparen
+    lparen = symbol LParen
+    rparen = symbol RParen
+#+end_src
+
+* Concluindo
+
+** Concluindo
+
+- Apresentamos uma introdução à análise sintática.
+
+- Revisamos sobre GLCs e transformações sobre estas.
+
+** Concluindo
+
+- Apresentamos a técnica de análise sintática descendente recursiva.
+
+- Em Haskell, esta técnica é representada por combinadores.
+
+** Concluindo
+
+- Próxima aula: análise sintática LL(1).

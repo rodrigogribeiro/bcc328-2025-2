@@ -1,0 +1,143 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Análise LALR
+#+Author: Construção de compiladores I
+
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar o algoritmo de análise sintática LALR.
+
+* Introdução
+
+** Introdução
+
+- Nas aulas anteriores, vimos o algoritmos LR(0) e SLR.
+
+- Estes algoritmos conseguem realizar o parsing de algumas construções
+  de linguagens de programação.
+
+** Introdução
+
+- Problema: Existem gramáticas simples que não são SLR.
+
+** Introdução
+
+- Exemplo
+
+\begin{array}{lcl}
+P & \to & CC\\
+C & \to & 0C\,\mid\,1
+\end{array}
+
+** Introdução
+
+- Problema: Algoritmos anteriores tomam decisão considerando apenas a pilha.
+
+- *Solução*: Adicionar o próximo token esperado da entrada em cada um dos estados do AFD usado para construir a tabela.
+
+** Introdução
+
+- Ao componente da entrada em um estado, damos o nome de *lookahead*.
+
+- Acrescentar o lookahead, obtemos o algoritmo conhecido como LR(1).
+  - Porém, isso pode gerar muitos estados.
+
+** Introdução
+
+- *Solução*: Realizar a união de lookaheads para o mesmo conjunto de itens.
+
+- Esse algoritmo é conhecido como LALR.
+
+** Introdução
+
+- Para combinar conjuntos de itens, é útil considerar o conceito de *núcleo*.
+
+- O *núcleo* de um conjunto de itens é um subconjunto de itens utilizado para criar o conjunto.
+
+** Introdução
+
+- Após criar os conjuntos LR(1), combinamos os conjuntos com o mesmo núcleo em um único.
+
+* Construção dos itens LALR
+
+** Construção dos itens LALR
+
+- Fechamento de conjunto de itens $I$.
+  - $I\subseteq closure(I)$.
+  - Para cada item $[A\to \alpha \textbf{.}B\beta,a]$ em $I$
+    - Para cada regra $B \to \gamma$ em $G'$
+      - Para cada $b\in first(\beta a)$
+        - Adicione $[B \to .\gamma,b]$ em $I$
+- Repita enquanto houver alterações em $I$.
+
+** Construção dos itens LALR
+
+- Função de $goto(I,X)$
+  - Inicialize $J$ como $\emptyset$.
+  - Para cada item $[A\to \alpha .X \beta,a]$ em $I$
+    - Adicione o item $[A \to \alpha X. \beta, a]$ ao conjunto $J$.
+  - retorne $closure(J)$
+
+** Construção dos itens LALR
+
+- Função de construção de itens $G'$
+  - inicializa $C$ como closure({[S \to .S, $]})
+    - Para cada conjunto $I \in C$
+      - Para cada símbolo $X$ de $G'$
+        - se $goto(I,X) \neq \emptyset \land goto(I,X) \not\in C$
+          - Adicione $goto(I,X)$ em $C$
+  - repetir enquanto houver alterações em $C$.
+
+* Construção da tabela LALR
+
+** Construção da tabela LALR
+
+- Se $[A \to \alpha .a\beta,b] \in I_i$ e $goto(I_i,a) = I_j$,
+  - A[i,a] = shift j.
+
+** Construção da tabela LALR
+
+- Se $[A \to \alpha . , a] \in I_i$ e $A \neq S'$
+  - A[i,a] = reduce A \to \alpha
+
+** Construção da tabela LALR
+
+- Se [S' \to S., $] \in I_i
+  - A[i,$] = accept
+
+** Construção da tabela LALR
+
+- Seja J = I_1 \cup ... \cup I_n.
+  - Núcleo de cada I_i é o mesmo.
+- Seja K a união de todos os itens de goto(I_1,X).
+  -  Fazemos G[J,X] = K
+
+* Exemplo
+
+** Exemplo
+
+- Construção da tabela LALR para a gramática
+
+\begin{array}{lcl}
+P & \to & L \mathbf{=} R \,\mid\, R\\
+L & \to & \mathbf{*}R\,\mid\, \mathbf{id} \\
+R & \to & L \\
+\end{array}
+
+* Concluindo
+
+** Concluindo
+
+- Nesta aula apresentamos dois algoritmos para a construção de tabelas LALR.
+
+- Próxima aula: Geradores de analisadores LALR.
