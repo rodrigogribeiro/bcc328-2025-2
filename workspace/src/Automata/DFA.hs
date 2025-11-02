@@ -4,6 +4,7 @@ module Automata.DFA ( DFA (..)
                     , longest
                     , unionDFA
                     , intersectionDFA
+                    , enumerateStates
                     ) where
 
 -- definition of a deterministic finite automata
@@ -13,7 +14,7 @@ data DFA a
       start :: a
     , delta :: a -> Char -> a
     , finals :: a -> Bool
-    } 
+    }
 
 
 -- producing the resulting state
@@ -24,7 +25,7 @@ deltaStar m = foldl (delta m) (start m)
 -- checking membership
 
 accept :: DFA a -> String -> Bool
-accept m s = finals m (deltaStar m s) 
+accept m s = finals m (deltaStar m s)
 
 -- longest match
 
@@ -64,7 +65,7 @@ dfaProduct m1 m2 fin
     , finals = fin
     }
     where
-      delta' (e1,e2) c = (delta m1 e1 c, delta m2 e2 c) 
+      delta' (e1,e2) c = (delta m1 e1 c, delta m2 e2 c)
 
 -- union / intersection
 
@@ -77,3 +78,15 @@ intersectionDFA :: DFA a -> DFA b -> DFA (a,b)
 intersectionDFA m1 m2 = dfaProduct m1 m2 g
   where
     g (e1, e2) = finals m1 e1 && finals m2 e2
+
+-- generating all states 
+
+enumerateStates :: Eq a => DFA a -> [Char] -> [a]
+enumerateStates (DFA st dt _) alphabet =
+    let explore state visited
+            | state `elem` visited = visited
+            | otherwise =
+                let newVisited = state : visited
+                    nextStates = map (dt state) alphabet
+                in foldr explore newVisited nextStates
+    in explore st []

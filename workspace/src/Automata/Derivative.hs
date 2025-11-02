@@ -4,9 +4,12 @@ module Automata.Derivative ( nullable
                            , star
                            , deriv
                            , match
+                           , derivDFA
                            )where
 
+import Data.List 
 import Automata.RegExp
+import Automata.DFA
 
 
 -- nullability test
@@ -40,6 +43,14 @@ star Empty = Lambda
 star (Star e) = e
 star e = Star e
 
+-- simplify a regex using smart constructors 
+
+simp :: Regex -> Regex 
+simp (e1 :+: e2) = e1 .+. e2 
+simp (e1 :@: e2) = e1 .@. e2 
+simp (Star e) = star e
+simp e = e 
+
 -- derivative function
 
 deriv :: Char -> Regex -> Regex
@@ -61,3 +72,31 @@ deriv a (Star e1)
 match :: Regex -> String -> Bool
 match e [] = nullable e
 match e (c : cs) = match (deriv c e) cs
+
+-- building a DFA using derivatives 
+
+enumerateDerivs :: Regex -> [Regex]
+enumerateDerivs initial = go [initial] [initial]
+  where
+    go [] acc = acc
+    go (state:rest) acc = 
+        let chars = symbols initial 
+            newStates = nub [deriv c state | c <- chars]
+            unseen = filter (`notElem` acc) newStates
+        in go (rest ++ unseen) (acc ++ unseen)
+
+derivDFA :: Regex -> DFA Regex
+derivDFA e
+  = DFA {
+      start = initial
+    , delta = delta'
+    , finals = nullable 
+    }
+  where
+    initial = simp e
+    states = enumerateDerivs initial
+    
+    delta' state char = 
+        let e' = deriv char state
+        in if e' `elem` states then e' else Empty
+    

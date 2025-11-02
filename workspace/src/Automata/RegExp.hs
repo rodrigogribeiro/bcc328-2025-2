@@ -8,13 +8,17 @@ module Automata.RegExp ( Regex (..)
                        , thompson
                        , toDFA
                        , lexer
+                       , minlexer
+                       , symbols 
                        ) where
 
+import Data.List (union)
 import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Automata.NFA
 import Automata.DFA
+import Automata.Minimization 
 
 -- definition of regular expressions
 
@@ -26,6 +30,16 @@ data Regex
   | Regex :@: Regex
   | Star Regex
   deriving (Eq, Ord, Show)
+
+symbols :: Regex -> [Char]
+symbols (Chr c) = [c]
+symbols (e1 :+: e2) 
+  = symbols e1 `union` symbols e2
+symbols (e1 :@: e2)
+  = symbols e1 `union` symbols e2 
+symbols (Star e)
+  = symbols e 
+symbols _ = []
 
 -- Thompson construction
 
@@ -121,4 +135,12 @@ toDFA :: Regex -> DFA (Set Int)
 toDFA = subset . thompson
 
 lexer :: [Regex] -> DFA (Set Int)
-lexer = subset . foldr unionNFA emptyNFA . map thompson
+lexer = subset . foldr unionNFA emptyNFA . map thompson 
+
+minlexer :: [Regex] -> DFA (Set (Set (Set Int)))
+minlexer es 
+  = brzozowski m sigma allStates  
+    where 
+      m = lexer es  
+      sigma = foldr (union . symbols) [] es  
+      allStates = enumerateStates m sigma 

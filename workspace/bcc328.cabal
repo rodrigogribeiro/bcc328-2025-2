@@ -152,10 +152,20 @@ library
       PEG.Pattern.Syntax.Pattern 
       PEG.Pattern.Syntax.Peg
       PEG.Semantics.Simple
+      -- Parsing algorithms 
+      Parsing.Descendent.Combinators
+      Parsing.Descendent.ExpExample
+      Parsing.Descendent.Expr
+      Parsing.LL.BuildTable
+      Parsing.LL.Parser 
+      Parsing.First
+      Parsing.Follow
+      Parsing.Grammar
       -- Review about monads
       Review.Reader.SimpleHtml
       Review.Reader.SimpleReader
       -- general utilities
+      Utils.Fixpoint
       Utils.Pretty
       Utils.Value
       -- While language implementation
