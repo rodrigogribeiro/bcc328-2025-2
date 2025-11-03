@@ -9,7 +9,7 @@ module Automata.RegExp ( Regex (..)
                        , toDFA
                        , lexer
                        , minlexer
-                       , symbols 
+                       , symbols
                        ) where
 
 import Data.List (union)
@@ -18,7 +18,7 @@ import qualified Data.Set as Set
 
 import Automata.NFA
 import Automata.DFA
-import Automata.Minimization 
+import Automata.Minimization
 
 -- definition of regular expressions
 
@@ -33,12 +33,12 @@ data Regex
 
 symbols :: Regex -> [Char]
 symbols (Chr c) = [c]
-symbols (e1 :+: e2) 
+symbols (e1 :+: e2)
   = symbols e1 `union` symbols e2
 symbols (e1 :@: e2)
-  = symbols e1 `union` symbols e2 
+  = symbols e1 `union` symbols e2
 symbols (Star e)
-  = symbols e 
+  = symbols e
 symbols _ = []
 
 -- Thompson construction
@@ -73,7 +73,7 @@ unionNFA m1 m2
       numberOfStates = n1 + n2
     , nfaStart = Set.union (nfaStart m1) (shift n1 (nfaStart m2))
     , nfaDelta = f
-    , nfaFinals = Set.union (nfaFinals m2) (shift n1 (nfaFinals m2))
+    , nfaFinals = Set.union (nfaFinals m1) (shift n1 (nfaFinals m2))
     }
     where
       n1 = numberOfStates m1
@@ -94,10 +94,11 @@ concatNFA m1 m2
       n2 = numberOfStates m2
       start1 = nfaStart m1
       final1 = nfaFinals m1
+      final2 = nfaFinals m2
       newStart = if disjoint start1 final1
                  then start1
                  else Set.union start1 (shift n1 final1)
-      newFinals = shift n1 final1
+      newFinals = shift n1 final2
       newDelta e c = if e < n1 then
                        if disjoint (nfaDelta m1 e c) final1
                        then nfaDelta m1 e c
@@ -135,12 +136,12 @@ toDFA :: Regex -> DFA (Set Int)
 toDFA = subset . thompson
 
 lexer :: [Regex] -> DFA (Set Int)
-lexer = subset . foldr unionNFA emptyNFA . map thompson 
+lexer = subset . foldr unionNFA emptyNFA . map thompson
 
 minlexer :: [Regex] -> DFA (Set (Set (Set Int)))
-minlexer es 
-  = brzozowski m sigma allStates  
-    where 
-      m = lexer es  
-      sigma = foldr (union . symbols) [] es  
-      allStates = enumerateStates m sigma 
+minlexer es
+  = brzozowski m sigma allStates
+    where
+      m = lexer es
+      sigma = foldr (union . symbols) [] es
+      allStates = enumerateStates m sigma

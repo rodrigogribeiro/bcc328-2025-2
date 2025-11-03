@@ -71,16 +71,16 @@
 
 - Definição de derivada (continuação)
 
-\begin{array}{lcl}
-\partial_{a}(e_1 + e_2) & = & \partial_a(e_1)+\partial_a(e_2)\\
-\partial_{a}(e_1\,e_2)  & = & \partial_{a}(e_1)\,e_2 + \partial_{a}(e_2),\:\:\textrm{se }\nu(e_1) = \top\\
-\partial_{a}(e_1\,e_2)  & = & \partial_{a}(e_1)\,e_2\:\:\textrm{se }\nu(e_1) = \bot\\
-\partial_{a}(e_1^*)     & = & \partial_{a}(e_1)\,e_1^*\\
+\begin{array}{l}
+\partial_{a}(e_1 + e_2) = \partial_a(e_1)+\partial_a(e_2)\\
+\partial_{a}(e_1\,e_2) =\partial_{a}(e_1)\,e_2 + \partial_{a}(e_2),\:\:\textrm{se }\nu(e_1) = \top\\
+\partial_{a}(e_1\,e_2)  = \partial_{a}(e_1)\,e_2\:\:\textrm{se }\nu(e_1) = \bot\\
+\partial_{a}(e_1^*)     = \partial_{a}(e_1)\,e_1^*\\
 \end{array}
 
 ** Derivadas de ERs
 
-- Número de derivadas é finito sobre uma ER $e$ é finito.
+- Número de derivadas de uma ER $e$ é finito.
   - Se considerarmos a equivalência de ER
 
 ** Derivadas de ERs

@@ -3,7 +3,7 @@
 #+OPTIONS: tex t
 #+OPTIONS: timestamp:nil
 #+OPTIONS: org-confirm-babel-evaluate nil
-#+REVEAL_THEME: solarized
+#+REVEAL_THEME: white
 #+REVEAL_HLEVEL: 1
 #+REVEAL_ROOT: file:///home/rodrigo/reveal.js
 
@@ -314,7 +314,7 @@ unionNFA m1 m2
       numberOfStates = n1 + n2
     , nfaStart = Set.union (nfaStart m1) (shift n1 (nfaStart m2))
     , nfaDelta = f
-    , nfaFinals = Set.union (nfaFinals m2) (shift n1 (nfaFinals m2))
+    , nfaFinals = Set.union (nfaFinals m1) (shift n1 (nfaFinals m2))
     }
     where
       n1 = numberOfStates m1
