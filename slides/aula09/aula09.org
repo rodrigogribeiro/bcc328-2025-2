@@ -138,7 +138,7 @@ F  & \to & \textbf{(}E\textbf{)}\,|\,\textbf{id}
 
 ** First e Follow
 
-- Logo, temos que follow(E) = {*)*,*$*}.
+- Logo, temos que follow(E) = {*)*,$}.
 
 * Gramáticas LL(1)
 

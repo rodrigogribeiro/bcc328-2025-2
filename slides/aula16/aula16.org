@@ -1,0 +1,115 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Sistemas de tipos
+#+Author: Construção de compiladores I
+
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar os conceitos de tipagem dinâmica e estática em linguagens.
+
+- Mostrar como especificar a análise semântica utilizando um sistema de tipos.
+
+** Objetivos
+
+- Apresentar as propriedades teóricas relevantes em sistemas de tipos.
+
+* Motivação
+
+** Motivação
+
+- Praticamente todas as linguagens de programação utilizam alguma forma de *tipo*.
+
+- Apesar de não parecer, algumas linguagens usam tipos durante a execução...
+  - Chamamos isso de *tipagem dinâmica*.
+  - Exemplos: Python, Javascript e Lua.
+
+** Motivação
+
+- Algumas vantagens do uso de tipos:
+  - Prevenção de erros e segurança.
+
+  - Manutenibilidade e reuso de código.
+
+  - Otimização de código.
+
+** Motivação
+
+- Algumas vantagens do uso de tipos:
+  - Gerenciamento de memória.
+
+  - Suporte a polimorfismo e abstração.
+
+  - Desenvolvimento dirigido por tipos.
+
+
+** Motivação
+
+- Exemplo (Python)
+
+#+begin_src python
+x = 5;
+y = "teste";
+x + y;
+#+end_src
+
+** Motivação
+
+- Exemplo (C)
+
+#+begin_src c
+int* createArray() {
+  int arr[5] = {1,2,3,4,5};
+  return arr
+}
+
+int main () {
+  int* ptr = createArray();
+  printf("%d",ptr[0]);
+  return 0;
+}
+#+end_src
+
+** Motivação
+
+- Exemplo (Rust)
+
+#+begin_src rust
+fn create_array() -> &Vec<i32> {
+  let arr = vec![1,2,3,4,5];
+  &arr
+}
+#+end_src
+
+** Motivação
+
+- Sistemas de tipos são uma técnica de análise para evitar comportamentos indesejados em programas.
+
+- Para entender melhor sistemas de tipos, vamos incluir tipos na linguagem Line.
+
+
+* A linguagem TLine
+
+** A linguagem TLine
+
+- A linguagem TLine permite a declaraçãod e tipos de variáveis.
+
+- Para isso, inclui:
+
+  - Booleanos e operações sobre estes.
+
+  - Strings e operações sobre estas.
+
+** A linguagem TLine
+
+- Sintaxe de TLine
+

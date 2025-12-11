@@ -24,6 +24,7 @@ import Exp.Frontend.Syntax.ExpSyntax
 %left '+'
 %left '*'
 
+%expect 0
 %%
 
 Exp : num         { EInt $1 }

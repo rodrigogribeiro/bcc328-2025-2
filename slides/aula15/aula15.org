@@ -1,0 +1,373 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: Semântica de IMP
+#+Author: Construção de compiladores I
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar a semântica operacional para a linguagem While.
+
+- Implementar um interpretador de While.
+
+* Introdução
+
+** Introdução
+
+- Na última aula, apresentamos uma semântica operacional para uma linguagem de expressões.
+
+- Implementamos um interpretador a partir da semântica desta linguagem.
+
+** Introdução
+
+- Na aula anterior, vimos como lidar com manipulação de estado.
+
+- Nesta aula, o foco será em como adicionar estruturas de controle.
+
+* Sintaxe de While
+
+** Sintaxe de While
+
+- Recapitulando: Sintaxe de While
+
+\begin{array}{lcl}
+Program   & \to  & Stmts\\
+Stmts     & \to & Statement\:\:Stmts\,\mid\,\lambda\\
+\end{array}
+
+** Sintaxe de While
+
+- Recapitulando: Sintaxe de While
+
+\begin{array}{lcl}
+Statement & \to  & \mathtt{skip ;}\:\:\mid\:\:Type\:\:\mathrm{id}\:\:Init \mathrm{;} \\
+          & \mid & \mathrm{id}\:\:\mathtt{:=}\:\:Expr\mathrm{;}\\
+          & \mid & \mathtt{read}\:\:\mathrm{id ;}\:\:\mid\:\:\mathtt{print}\:\:Expr \mathrm{;}\\
+          & \mid & \mathtt{if}\:\:Expr\:\:\mathtt{then}\:\:Block\\
+          & \mid & \mathtt{if}\:\:Expr\:\:\mathtt{then}\:\:Block\:\:\mathrm{else}\:\:Block\\
+          & \mid & \mathtt{while}\:\:Expr\:\:Block
+\end{array}
+
+** Sintaxe de While
+
+- Recapitulando: Sintaxe de While 
+
+\begin{array}{lcl}
+Expr & \to  & Expr\:\:Op\:\:Expr\\
+     & \mid & \mathrm{-}\:\: Expr\:\mid\:\mathrm{(} Expr \mathrm{)}\\
+     & \mid & \mathrm{!}\:\: Expr\\
+     & \mid & \mathrm{number}\,\mid\, \mathrm{id}\\
+     & \mid & \mathrm{true}\,\mid\,\mathrm{false}\\
+\end{array}
+
+** Sintaxe de While
+
+- Recapitulando: Sintaxe de While 
+
+\begin{array}{lcl}
+Op   & \to  & \mathrm{+}\:\mid\:\mathrm{-}\:\mid\:\mathrm{*}\:\mid\:\mathrm{/}\\
+     & \mid & \mathrm{\&\&}\:\mid\:\mathrm{<}\:\mid\:\mathrm{==}\\
+Type & \to  & \mathrm{int}\,\mid\,\mathrm{bool}\\
+Block & \to & \mathrm{\{} Statement^* \mathrm{\}}\\
+Init & \to & \mathrm{:=}\:\:Expr\,\mid\,\lambda\\
+\end{array}
+
+** Sintaxe de While 
+
+- Representação da AST
+
+#+BEGIN_SRC haskell
+type Var = String 
+
+data Value
+  = EInt Int
+  | EBool Bool
+#+END_SRC
+
+
+** Sintaxe de Imp
+
+- Representação da AST
+
+#+BEGIN_SRC haskell
+data Exp a
+  = EValue Value
+  | EVar (Var a)
+  | (Exp a) :+: (Exp a)
+  | (Exp a) :*: (Exp a)
+  | (Exp a) :-: (Exp a)
+  | (Exp a) :/: (Exp a)
+  | (Exp a) :==: (Exp a)
+  | (Exp a) :<: (Exp a)
+  | ENot (Exp a)
+  | (Exp a) :&: (Exp a)
+#+END_SRC
+
+
+** Sintaxe de Imp
+
+- Representação da AST
+
+#+BEGIN_SRC haskell
+data Stmt a
+  = Skip
+  | Def Ty (Var a) (Maybe (Exp a))
+  | (Var a) := (Exp a)
+  | If (Exp a) (Block a) (Block a)
+  | Print (Exp a)
+  | SRead (Var a)
+  | While (Exp a) (Block a)
+#+END_SRC
+
+** Sintaxe de Imp
+
+- Representação da AST
+
+#+BEGIN_SRC haskell
+type Program a = Block a
+
+newtype Block a
+  = Block { unBlock :: [Stmt a] }
+#+END_SRC
+
+* Semântica de Imp
+
+** Semântica de Imp
+
+- Principal diferença: inclusão de *estado*
+  - Variáveis.
+
+- Representamos o estado usando uma *função finita*.
+  - Tabela de variáveis para valores.
+
+** Semântica de Imp
+
+- Representaremos o estado por \sigma.
+
+- \sigma(x): obter o valor de $x$ em \sigma.
+
+** Semântica de Imp
+
+- \sigma [x $\mapsto$ v]: incluir o valor v para a variável x.
+  - Sobreescreve valores anteriores de x
+  - Insere, caso x não esteja presente no domínio de \sigma.
+
+** Semântica de Imp
+
+- Semântica big-step
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image1.png
+#+HEADER: :headers '("\\usepackage{proof}")
+#+HEADER: :fit yes :imoutoptions -geometry 2400 :iminoptions -density 2400
+#+begin_src latex
+\[
+  \begin{array}{ccc}
+    \infer{\sigma ; v \Downarrow v}{v\:\text{ é um valor }} &
+    \infer{\sigma ; x \Downarrow v}
+          {\sigma(x) = v} &
+    \infer{\sigma ; e_1 \bullet e_2 \Downarrow v_3}
+          {\sigma ; e_1 \Downarrow v_1 &
+           \sigma ; e_2 \Downarrow v_2 &
+           v_3 = v_1 \bullet v_2} \\
+  \end{array}
+\]
+#+end_src
+
+[[./imgs/image1.png]]
+
+
+
+** Semântica de Imp
+
+- Semântica big-step
+
+#+HEADER: :imagemagick yes
+#+HEADER: :results silent :file ./imgs/image2.png
+#+HEADER: :headers '("\\usepackage{proof}")
+#+HEADER: :fit yes :imoutoptions -geometry 2400 :iminoptions -density 2400
+#+begin_src latex
+\[
+  \begin{array}{ccc}
+    \infer{\sigma ; e_1 \bullet e_2 \Downarrow v_3}
+          {\sigma ; e_1 \Downarrow v_1 &
+           \sigma ; e_2 \Downarrow v_2 &
+           v_3 = v_1 \bullet v_2} \\
+  \end{array}
+\]
+#+end_src
+
+[[./imgs/image2.png]]
+
+
+** Semântica de Imp
+
+- Definição de uma mônada
+
+#+BEGIN_SRC haskell
+type Env = Map (Var String) Value
+
+type ExecM a = ExceptT String (StateT Env IO) a
+#+END_SRC
+
+** Semântica de Imp
+
+- Operações sobre a mônada
+
+#+BEGIN_SRC haskell
+insertEnv :: Var String -> Value -> ExecM ()
+insertEnv v val = modify (insert v val)
+
+removeEnv :: [Var String] -> ExecM ()
+removeEnv vs = modify (\ env -> foldr delete env vs)
+#+END_SRC
+
+** Semântica de Imp
+
+#+BEGIN_SRC haskell
+lookupEnv :: Var String -> ExecM Value
+lookupEnv v
+  = do
+       val <- gets (lookup v)
+       case val of
+         Nothing -> throwError $ "Variable undefined:" ++ (unVar v)
+         Just val' -> return val'
+#+END_SRC
+
+** Semântica de Imp
+
+- Definição de duas funções.
+  - Semântica de expressões
+  - Semântica de comandos.
+
+** Semântica de Imp
+
+- Semântica de expressões
+  - Valores
+
+#+BEGIN_SRC haskell
+semanticsExpr :: Exp String -> ExecM Value
+semanticsExpr (EValue v) = return v
+#+END_SRC
+
+** Semântica de Imp
+
+- Semântica de expressões
+  - Variáveis
+
+#+BEGIN_SRC haskell
+semanticsExpr (EVar v) = lookupEnv v
+#+END_SRC
+
+** Semântica de Imp
+
+- Semântica de expressões
+  - Operadores
+
+#+BEGIN_SRC haskell
+(.+.) :: Value -> Value -> Value
+(EInt n) .+. (EInt m) = EInt (n + m)
+_ .+. _ = error "Impossible! Type Error"
+
+semanticsExpr (e1 :+: e2)
+  = do
+       v1 <- semanticsExpr e1
+       v2 <- semanticsExpr e2
+       return $ v1 .+. v2
+#+END_SRC
+
+** Semântica de Imp
+
+- Semântica de comandos
+
+#+BEGIN_SRC haskell
+semanticsStmt :: Stmt String -> ExecM [Var String]
+semanticsStmt Skip = return []
+semanticsStmt (Def ty v e)
+  = do
+      val <- maybe (return $ defaultValue ty) semanticsExpr e
+      insertEnv v val
+      return [v]
+#+END_SRC
+
+** Semântica de Imp
+
+- Semântica de comandos
+
+#+BEGIN_SRC haskell
+semanticsStmt (v := e)
+  = do
+      val <- semanticsExpr e
+      insertEnv v val
+      return []
+semanticsStmt (If e blk1 blk2)
+  = do
+      val <- semanticsExpr e
+      if val == EBool True then semanticsBlock blk1
+        else semanticsBlock blk2
+      return []
+#+END_SRC
+
+** Semântica de Imp
+
+- Semântica de comandos
+
+#+BEGIN_SRC haskell
+semanticsStmt (Print e)
+  = do
+      val <- semanticsExpr e
+      liftIO (putStr (render (pprint val)))
+      return []
+semanticsStmt (SRead v)
+  = do
+       inp <- liftIO getLine
+       case parse parserValue "" inp of
+         Left _ -> throwError "invalid input!"
+         Right val -> insertEnv v val >> return []
+#+END_SRC
+
+** Semântica de Imp
+
+- Semântica de comandos
+
+#+BEGIN_SRC haskell
+semanticsStmt (While e blk)
+  = do
+      val <- semanticsExpr e
+      if val == EBool True then do
+        semanticsBlock blk
+        semanticsStmt (While e blk)
+      else return []
+#+END_SRC
+
+** Semântica de Imp
+
+- Semântica de blocos
+
+#+BEGIN_SRC haskell
+semanticsBlock :: Block String -> ExecM ()
+semanticsBlock (Block blk)
+  = do
+      vs <- concat <$> mapM semanticsStmt blk
+      removeEnv vs
+#+END_SRC
+
+* Concluindo
+
+** Concluindo
+
+- Apresentamos a semântica operacional da linguagem Imp.
+
+- Apresentamos como esta é a especificação de um interpretador desta linguagem.
+
+** Concluindo
+
+- Apresentamos a implementação do interpretador em Haskell.

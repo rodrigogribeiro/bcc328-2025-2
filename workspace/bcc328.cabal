@@ -75,9 +75,9 @@ common common-opts
   build-tool-depends: happy:happy, alex:alex
 
   default-language: Haskell2010
-  default-extensions: TypeSynonymInstances 
+  default-extensions: TypeSynonymInstances
                       FlexibleInstances
-                      InstanceSigs 
+                      InstanceSigs
                       TupleSections
                       DeriveDataTypeable
                       FlexibleContexts
@@ -116,7 +116,7 @@ library
       Line.Backend.RiscV.Pretty
       Line.Backend.RiscV.Syntax
       Line.Backend.WASM.LineCodegen
-      Line.Backend.WASM.Pretty 
+      Line.Backend.WASM.Pretty
       Line.Backend.WASM.Syntax
       Line.Frontend.Lexer.LineLexer
       Line.Frontend.Lexer.Token
@@ -138,26 +138,28 @@ library
       Markup.Printer.Html
       Markup.Tests.HtmlTests
       -- Parsing expression grammars
-      PEG.Pattern.Match.Capture 
-      PEG.Pattern.Match.Rewrite 
+      PEG.Pattern.Match.Capture
+      PEG.Pattern.Match.Rewrite
       PEG.Pattern.Parser.Base
-      PEG.Pattern.Parser.ParsedTree 
+      PEG.Pattern.Parser.ParsedTree
       PEG.Pattern.Parser.Pattern
-      PEG.Pattern.Parser.Peg 
-      PEG.Pattern.Pipeline.MatchPipeline 
+      PEG.Pattern.Parser.Peg
+      PEG.Pattern.Pipeline.MatchPipeline
       PEG.Pattern.Semantic.Pattern
-      PEG.Pattern.Semantic.Peg 
-      PEG.Pattern.Syntax.Base 
-      PEG.Pattern.Syntax.ParsedTree 
-      PEG.Pattern.Syntax.Pattern 
+      PEG.Pattern.Semantic.Peg
+      PEG.Pattern.Syntax.Base
+      PEG.Pattern.Syntax.ParsedTree
+      PEG.Pattern.Syntax.Pattern
       PEG.Pattern.Syntax.Peg
       PEG.Semantics.Simple
-      -- Parsing algorithms 
+      -- Parsing algorithms
       Parsing.Descendent.Combinators
       Parsing.Descendent.ExpExample
       Parsing.Descendent.Expr
       Parsing.LL.BuildTable
-      Parsing.LL.Parser 
+      Parsing.LL.Parser
+      Parsing.LR.LR0.BuildTable
+      Parsing.LR.LR0.LR0Parser
       Parsing.First
       Parsing.Follow
       Parsing.Grammar
@@ -169,12 +171,12 @@ library
       Utils.Pretty
       Utils.Value
       -- While language implementation
-      While.Frontend.Lexer.Token 
+      While.Frontend.Lexer.Token
       While.Frontend.Lexer.WhileLexer
       While.Frontend.Parser.WhileParser
       While.Frontend.Pretty.WhilePretty
       While.Frontend.Syntax.WhileSyntax
-      While.Interp.WhileInterp 
+      While.Interp.WhileInterp
 
     -- Modules included in this library but not exported.
     -- other-modules:

@@ -19,20 +19,25 @@ newtype Parser s a =
 -- a parser is a functor
 
 instance Functor (Parser s) where
-  fmap f p = Parser (\ s -> [(f x, s') | (x,s') <- runParser p s]) 
+  fmap f p
+    = Parser (\ s -> [(f x, s') |
+                      (x,s') <- runParser p s])
 
 -- a parser is a applicative functor
 
 instance Applicative (Parser s) where
   pure  a = Parser (\ts -> [(a, ts)])
-  p1 <*> p2 = Parser (\ s -> [(f x, s2) | (f, s1) <- runParser p1 s,
-                                          (x, s2) <- runParser p2 s1])
+  p1 <*> p2 = Parser (\ s -> [(f x, s2) |
+           (f, s1) <- runParser p1 s,
+           (x, s2) <- runParser p2 s1])
 
 -- a parser is a alternative
 
 instance Alternative (Parser t) where
   empty = Parser (\ _ -> [])
-  p1 <|> p2 = Parser (\ s -> runParser p1 s ++ runParser p2 s)
+  p1 <|> p2 = Parser
+     (\ s -> runParser p1 s ++
+             runParser p2 s)
 
 -- a parser is a monad
 
@@ -73,7 +78,7 @@ symbol c = sat (c ==)
 -- parsing a token
 
 token :: Eq s => [s] -> Parser s [s]
-token = mapM symbol 
+token = mapM symbol
 
 -- parsing a single digit
 
@@ -95,7 +100,7 @@ many1 p  =  list <$> p <*> many p
 -- packing a parser
 
 pack :: Parser s a -> Parser s b -> Parser s c -> Parser s b
-pack p r q  =  pi32 <$> p <*> r <*> q 
+pack p r q  =  pi32 <$> p <*> r <*> q
 
 -- parsing a list with a separator
 
@@ -130,7 +135,7 @@ natural  :: Parser Char Int
 natural  =  foldl (\a b -> a*10 + b) 0 <$> many1 digit
 
 integer  ::  Parser Char Int
-integer  =  (const negate <$> (symbol '-')) `option` id  <*>  natural 
+integer  =  (const negate <$> (symbol '-')) `option` id  <*>  natural
 
 identifier :: Parser Char String
 identifier =  list <$> sat isAlpha <*> greedy (sat isAlphaNum)
@@ -157,7 +162,7 @@ chainl pe po  =  h <$> pe <*> many (j <$> po <*> pe)
         h x fs  =  foldl (flip ($)) x fs
 
 
--- Combinators for repetition 
+-- Combinators for repetition
 
 psequence         :: [Parser s a] -> Parser s [a]
 psequence []      =  succeed []

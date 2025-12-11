@@ -1,0 +1,104 @@
+#+OPTIONS: num:nil toc:nil
+#+OPTIONS: date:nil reveal_mathjax:t
+#+OPTIONS: tex t
+#+OPTIONS: timestamp:nil
+#+OPTIONS: org-confirm-babel-evaluate nil
+#+REVEAL_THEME: white
+#+REVEAL_HLEVEL: 1
+#+REVEAL_ROOT: file:///home/rodrigo/reveal.js
+
+#+Title: A linguagem Imp
+#+Author: Construção de compiladores I
+
+
+* Objetivos
+
+** Objetivos
+
+- Apresentar a linguagem a ser utilizada para exposição
+  dos conceitos da disciplina.
+
+* Linguagem Imp
+
+** Linguagem Imp
+
+- Linguagem simples utilizada para exposição dos conceitos da disciplina.
+
+- Permite a análise de problemas recorrentes no projeto de compiladores.
+
+** Linguagem Imp
+
+- Porém, como especificar uma linguagem de programação?
+
+** Linguagem Imp
+
+- Sintaxe definida usando gramáticas livres de contexto.
+  - Alguns elementos são descritos por Expressões regulares.
+
+** Linguagem Imp
+
+- Elementos $\mathrm{léxicos}$ são representados utilizando pela string propriamente dita
+  - Ex.: $\mathrm{if}$, $\mathrm{while}$ e outras palavras reservadas.
+
+- Outros elementos léxicos: identificadores e números.
+
+** Linguagem Imp
+
+- Identificadores: $\mathrm{letter(letter + digit)^*}$
+  - $\mathrm{letter = a + b + c + ... + A + B + ...}$
+  - $\mathrm{digit = 0 + 1 + ... + 9}$
+
+** Linguagem Imp
+
+- Comentários:
+  - Linha: $\textrm{// este é um comentário.}$
+  - Bloco: $\textrm{/* este é um comentário. */}$
+
+** Linguagem Imp
+
+- Sintaxe de Imp
+
+\begin{array}{lcl}
+Program   & \to  & Stmts\\
+Stmts     & \to & Statement\:\:Stmts\,\mid\,\lambda\\
+\end{array}
+
+** Linguagem Imp
+
+- Sintaxe de Imp
+
+\begin{array}{lcl}
+Statement & \to  & \mathtt{skip ;}\:\:\mid\:\:Type\:\:\mathrm{id}\:\:Init \mathrm{;} \\
+          & \mid & \mathrm{id}\:\:\mathtt{:=}\:\:Expr\mathrm{;}\\
+          & \mid & \mathtt{read}\:\:\mathrm{id ;}\:\:\mid\:\:\mathtt{print}\:\:Expr \mathrm{;}\\
+          & \mid & \mathtt{if}\:\:Expr\:\:\mathtt{then}\:\:Block\\
+          & \mid & \mathtt{if}\:\:Expr\:\:\mathtt{then}\:\:Block\:\:\mathrm{else}\:\:Block\\
+          & \mid & \mathtt{while}\:\:Expr\:\:Block
+\end{array}
+
+
+** Linguagem Imp
+
+- Sintaxe de Imp (Continuação)
+
+\begin{array}{lcl}
+Expr & \to  & Expr\:\:Op\:\:Expr\\
+     & \mid & \mathrm{-}\:\: Expr\:\mid\:\mathrm{(} Expr \mathrm{)}\\
+     & \mid & \mathrm{!}\:\: Expr\\
+     & \mid & \mathrm{number}\,\mid\, \mathrm{id}\\
+     & \mid & \mathrm{true}\,\mid\,\mathrm{false}\\
+\end{array}
+
+** Linguagem Imp
+
+- Sintaxe de Imp (Continuação)
+
+\begin{array}{lcl}
+Op   & \to  & \mathrm{+}\:\mid\:\mathrm{-}\:\mid\:\mathrm{*}\:\mid\:\mathrm{/}\\
+     & \mid & \mathrm{\&\&}\:\mid\:\mathrm{<}\:\mid\:\mathrm{==}\\
+Type & \to  & \mathrm{int}\,\mid\,\mathrm{bool}\\
+Block & \to & \mathrm{\{} Statement^* \mathrm{\}}\\
+Init & \to & \mathrm{:=}\:\:Expr\,\mid\,\lambda\\
+\end{array}
+
+
