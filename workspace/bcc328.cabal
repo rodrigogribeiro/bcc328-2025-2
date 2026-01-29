@@ -96,6 +96,15 @@ library
       Automata.Minimization
       Automata.NFA
       Automata.RegExp
+      -- closure conversion
+      ClosureConvert.CC
+      ClosureConvert.CCodegen
+      ClosureConvert.LLVMCodegen
+      ClosureConvert.Source
+      ClosureConvert.SourceInterpreter
+      ClosureConvert.SourceParser
+      ClosureConvert.Target
+      ClosureConvert.TargetInterpreter
       -- expressions
       Exp.Backend.WASM.ExpCodegen
       Exp.Backend.WASM.Pretty
@@ -137,6 +146,17 @@ library
       Markup.Printer.Backend
       Markup.Printer.Html
       Markup.Tests.HtmlTests
+      -- mini ml
+      MiniML.Frontend.Parser.ExpParser
+      MiniML.Frontend.Pretty.PrettyPrint
+      MiniML.Frontend.Syntax.Exp
+      MiniML.Frontend.Syntax.Type
+      MiniML.Frontend.TypeInference.Constraint
+      MiniML.Frontend.TypeInference.ConstraintGen
+      MiniML.Frontend.TypeInference.Inference
+      MiniML.Frontend.TypeInference.Solver
+      MiniML.Frontend.TypeInference.SolverMonad
+
       -- Parsing expression grammars
       PEG.Pattern.Match.Capture
       PEG.Pattern.Match.Rewrite
@@ -163,6 +183,11 @@ library
       Parsing.First
       Parsing.Follow
       Parsing.Grammar
+      -- Postfix expressions
+      Postfix.PostfixParser
+      Postfix.PostfixLexer
+      Postfix.PostfixSyntax
+      Postfix.Token
       -- Review about monads
       Review.Reader.SimpleHtml
       Review.Reader.SimpleReader
@@ -237,6 +262,31 @@ executable markup
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+executable mini-ml
+    -- Import common warning flags.
+    import:           common-opts
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          MiniML.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:
+        base ^>=4.18.3.0,
+        bcc328
+
+    -- Directories containing source files.
+    hs-source-dirs:   src/MiniML
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
 
 executable exp
     -- Import common warning flags.

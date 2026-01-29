@@ -7,10 +7,44 @@
 #+REVEAL_HLEVEL: 1
 #+REVEAL_ROOT: file:///home/rodrigo/reveal.js
 
-#+Title: Introdução ao RISC-V e WASM
+#+Title: Inferência de tipos
 #+Author: Construção de compiladores I
-
 
 * Objetivos
 
+** Objetivos
 
+- Apresentar a diferença entre verificação e inferência de tipos.
+
+- Apresentar a inferência de tipos baseada em restrições.
+
+
+* Introdução
+
+** Introdução
+
+- Inferência de tipos
+  - Deduzir tipos de definições a partir de seus usos.
+- Porém, como isso difere da verificação de tipos?
+
+** Introdução
+
+- Diferença está na entrada / saída
+  - Verificação
+    - Entradas: Programa + tipos
+    - Saída: booleano
+  - Inferência:
+    - Entradas: Programa
+    - Saída: tipos.
+
+** Introdução
+
+- Exemplo: Verificação de tipos do programa
+
+\[
+\lambda f . \lambda x . f x : (a \to b) \to a \to b
+\]
+
+** Introdução
+
+- Verificação de tipos 

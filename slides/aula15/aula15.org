@@ -7,7 +7,7 @@
 #+REVEAL_HLEVEL: 1
 #+REVEAL_ROOT: file:///home/rodrigo/reveal.js
 
-#+Title: Semântica de IMP
+#+Title: Semântica de While
 #+Author: Construção de compiladores I
 
 * Objetivos
@@ -16,7 +16,7 @@
 
 - Apresentar a semântica operacional para a linguagem While.
 
-- Implementar um interpretador de While.
+- Whilelementar um interpretador de While.
 
 * Introdução
 
@@ -24,7 +24,7 @@
 
 - Na última aula, apresentamos uma semântica operacional para uma linguagem de expressões.
 
-- Implementamos um interpretador a partir da semântica desta linguagem.
+- Whilelementamos um interpretador a partir da semântica desta linguagem.
 
 ** Introdução
 
@@ -58,7 +58,7 @@ Statement & \to  & \mathtt{skip ;}\:\:\mid\:\:Type\:\:\mathrm{id}\:\:Init \mathr
 
 ** Sintaxe de While
 
-- Recapitulando: Sintaxe de While 
+- Recapitulando: Sintaxe de While
 
 \begin{array}{lcl}
 Expr & \to  & Expr\:\:Op\:\:Expr\\
@@ -70,7 +70,7 @@ Expr & \to  & Expr\:\:Op\:\:Expr\\
 
 ** Sintaxe de While
 
-- Recapitulando: Sintaxe de While 
+- Recapitulando: Sintaxe de While
 
 \begin{array}{lcl}
 Op   & \to  & \mathrm{+}\:\mid\:\mathrm{-}\:\mid\:\mathrm{*}\:\mid\:\mathrm{/}\\
@@ -80,12 +80,12 @@ Block & \to & \mathrm{\{} Statement^* \mathrm{\}}\\
 Init & \to & \mathrm{:=}\:\:Expr\,\mid\,\lambda\\
 \end{array}
 
-** Sintaxe de While 
+** Sintaxe de While
 
 - Representação da AST
 
 #+BEGIN_SRC haskell
-type Var = String 
+type Var = String
 
 data Value
   = EInt Int
@@ -93,7 +93,7 @@ data Value
 #+END_SRC
 
 
-** Sintaxe de Imp
+** Sintaxe de While
 
 - Representação da AST
 
@@ -112,7 +112,7 @@ data Exp a
 #+END_SRC
 
 
-** Sintaxe de Imp
+** Sintaxe de While
 
 - Representação da AST
 
@@ -127,7 +127,7 @@ data Stmt a
   | While (Exp a) (Block a)
 #+END_SRC
 
-** Sintaxe de Imp
+** Sintaxe de While
 
 - Representação da AST
 
@@ -138,9 +138,9 @@ newtype Block a
   = Block { unBlock :: [Stmt a] }
 #+END_SRC
 
-* Semântica de Imp
+* Semântica de While
 
-** Semântica de Imp
+** Semântica de While
 
 - Principal diferença: inclusão de *estado*
   - Variáveis.
@@ -148,19 +148,19 @@ newtype Block a
 - Representamos o estado usando uma *função finita*.
   - Tabela de variáveis para valores.
 
-** Semântica de Imp
+** Semântica de While
 
 - Representaremos o estado por \sigma.
 
 - \sigma(x): obter o valor de $x$ em \sigma.
 
-** Semântica de Imp
+** Semântica de While
 
 - \sigma [x $\mapsto$ v]: incluir o valor v para a variável x.
   - Sobreescreve valores anteriores de x
   - Insere, caso x não esteja presente no domínio de \sigma.
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica big-step
 
@@ -186,7 +186,7 @@ newtype Block a
 
 
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica big-step
 
@@ -208,7 +208,7 @@ newtype Block a
 [[./imgs/image2.png]]
 
 
-** Semântica de Imp
+** Semântica de While
 
 - Definição de uma mônada
 
@@ -218,7 +218,7 @@ type Env = Map (Var String) Value
 type ExecM a = ExceptT String (StateT Env IO) a
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Operações sobre a mônada
 
@@ -230,7 +230,7 @@ removeEnv :: [Var String] -> ExecM ()
 removeEnv vs = modify (\ env -> foldr delete env vs)
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 #+BEGIN_SRC haskell
 lookupEnv :: Var String -> ExecM Value
@@ -242,13 +242,13 @@ lookupEnv v
          Just val' -> return val'
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Definição de duas funções.
   - Semântica de expressões
   - Semântica de comandos.
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de expressões
   - Valores
@@ -258,7 +258,7 @@ semanticsExpr :: Exp String -> ExecM Value
 semanticsExpr (EValue v) = return v
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de expressões
   - Variáveis
@@ -267,7 +267,7 @@ semanticsExpr (EValue v) = return v
 semanticsExpr (EVar v) = lookupEnv v
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de expressões
   - Operadores
@@ -275,7 +275,7 @@ semanticsExpr (EVar v) = lookupEnv v
 #+BEGIN_SRC haskell
 (.+.) :: Value -> Value -> Value
 (EInt n) .+. (EInt m) = EInt (n + m)
-_ .+. _ = error "Impossible! Type Error"
+_ .+. _ = error "Whileossible! Type Error"
 
 semanticsExpr (e1 :+: e2)
   = do
@@ -284,7 +284,7 @@ semanticsExpr (e1 :+: e2)
        return $ v1 .+. v2
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de comandos
 
@@ -298,7 +298,7 @@ semanticsStmt (Def ty v e)
       return [v]
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de comandos
 
@@ -316,7 +316,7 @@ semanticsStmt (If e blk1 blk2)
       return []
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de comandos
 
@@ -334,7 +334,7 @@ semanticsStmt (SRead v)
          Right val -> insertEnv v val >> return []
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de comandos
 
@@ -348,7 +348,7 @@ semanticsStmt (While e blk)
       else return []
 #+END_SRC
 
-** Semântica de Imp
+** Semântica de While
 
 - Semântica de blocos
 
@@ -364,7 +364,7 @@ semanticsBlock (Block blk)
 
 ** Concluindo
 
-- Apresentamos a semântica operacional da linguagem Imp.
+- Apresentamos a semântica operacional da linguagem While.
 
 - Apresentamos como esta é a especificação de um interpretador desta linguagem.
 

@@ -1,16 +1,700 @@
+#+TITLE: Introdução ao WASM
+#+Author: Construção de compiladores I
 #+OPTIONS: num:nil toc:nil
 #+OPTIONS: date:nil reveal_mathjax:t
 #+OPTIONS: tex t
 #+OPTIONS: timestamp:nil
 #+OPTIONS: org-confirm-babel-evaluate nil
-#+REVEAL_THEME: white
+#+REVEAL_THEME: moon
 #+REVEAL_HLEVEL: 1
 #+REVEAL_ROOT: file:///home/rodrigo/reveal.js
 
-#+Title: Geração de código para expressões
-#+Author: Construção de compiladores I
-
-
 * Objetivos
+** Objetivos
+
+- Apresentar o WASM como um alvo de compilação.
 
 
+* O que é WebAssembly?
+** Definição
+
+WebAssembly (Wasm) é um formato de código binário portável:
+- Alvo de compilação para múltiplas linguagens
+- Executa em navegadores web
+- Desempenho próximo ao nativo
+- Seguro e sandboxed
+
+** Características Principais
+
+- *Binário*: Formato compacto e rápido de parsear
+- *Portável*: Roda em qualquer plataforma
+- *Seguro*: Execução em ambiente isolado
+- *Rápido*: Compilado AOT ou JIT
+
+** História
+
+- 2015: Anúncio do projeto
+- 2017: MVP (Minimum Viable Product) lançado
+- 2019: Tornou-se padrão W3C
+- Presente: Usado em produção por grandes empresas
+
+* Arquitetura do WebAssembly
+** Modelo de Execução
+
+WebAssembly é uma máquina de pilha:
+- Instruções operam em uma pilha implícita
+- Variáveis locais e globais
+- Memória linear
+- Funções com tipos explícitos
+
+** Tipos Primitivos
+
+| Tipo  | Descrição             | Tamanho |
+|-------+-----------------------+---------|
+| i32   | Inteiro 32 bits       | 4 bytes |
+| i64   | Inteiro 64 bits       | 8 bytes |
+| f32   | Float 32 bits         | 4 bytes |
+| f64   | Float 64 bits         | 8 bytes |
+
+Para esta apresentação, focaremos em =i32=.
+
+** Memória Linear
+
+#+BEGIN_SRC wasm
+(memory 1)  ;; 1 página = 64KB
+#+END_SRC
+
+- Array contíguo de bytes
+- Acessível por instruções load/store
+- Pode crescer dinamicamente
+- Compartilhada com JavaScript
+
+* Formato de Texto WebAssembly
+** WAT - WebAssembly Text Format
+
+Representação textual legível do bytecode:
+
+#+BEGIN_SRC wasm
+(module
+  (func $add (param $a i32) (param $b i32) (result i32)
+    local.get $a
+    local.get $b
+    i32.add)
+  (export "add" (func $add)))
+#+END_SRC
+
+** Estrutura de um Módulo
+
+#+BEGIN_SRC wasm
+(module
+  (import "env" "memory" (memory 1))
+  (import "console" "log" (func $log (param i32)))
+  
+  (func $main (export "main")
+    ;; código aqui
+  )
+)
+#+END_SRC
+
+** Convenções S-Expression
+
+WebAssembly usa notação S-expression:
+- Parênteses delimitam blocos
+- Primeiro elemento é o operador/instrução
+- Demais elementos são operandos
+- Aninhamento representa pilha implícita
+
+* Linguagem Fonte
+** Sintaxe da Linguagem
+
+Vamos compilar uma linguagem imperativa simples:
+
+#+BEGIN_SRC
+x := 10;
+y := 20;
+z := x + y * 2;
+print(z)
+#+END_SRC
+
+** Gramática
+
+#+BEGIN_EXAMPLE
+Stmt ::= Var := Expr ;
+       | if Expr then Stmt* else Stmt* end
+       | while Expr do Stmt* end
+       | print ( Expr )
+       | read ( Var )
+
+Expr ::= Expr + Expr | Expr - Expr
+       | Expr * Expr | Expr / Expr
+       | Expr == Expr | Expr < Expr
+       | ( Expr ) | Num | Var
+#+END_EXAMPLE
+
+** Tipos de Dados em Haskell
+
+#+BEGIN_SRC haskell
+data Stmt
+  = Assign String Expr
+  | If Expr [Stmt] [Stmt]
+  | While Expr [Stmt]
+  | Print Expr
+  | Read String
+
+data Expr
+  = Add Expr Expr | Sub Expr Expr
+  | Mul Expr Expr | Div Expr Expr
+  | Eq Expr Expr  | Lt Expr Expr
+  | Lit Int | Var String
+#+END_SRC
+
+* Geração de Código - Expressões
+** Pilha de Operandos
+
+Expressões em Wasm usam uma pilha:
+
+#+BEGIN_SRC wasm
+;; (2 + 3) * 4
+i32.const 2
+i32.const 3
+i32.add       ;; pilha: [5]
+i32.const 4
+i32.mul       ;; pilha: [20]
+#+END_SRC
+
+** Geração para Literais e Variáveis
+
+#+BEGIN_SRC haskell
+genExpr :: Expr -> VarEnv -> String
+
+genExpr (Lit n) _ = 
+  "  i32.const " ++ show n
+
+genExpr (Var x) env = 
+  case lookup x env of
+    Just idx -> "  local.get $" ++ x
+    Nothing  -> error $ "Variable not found: " ++ x
+#+END_SRC
+
+** Geração para Operações Aritméticas
+
+#+BEGIN_SRC haskell
+genExpr (Add e1 e2) env =
+  genExpr e1 env ++ "\n" ++
+  genExpr e2 env ++ "\n" ++
+  "  i32.add"
+
+genExpr (Mul e1 e2) env =
+  genExpr e1 env ++ "\n" ++
+  genExpr e2 env ++ "\n" ++
+  "  i32.mul"
+#+END_SRC
+
+** Geração para Comparações
+
+#+BEGIN_SRC haskell
+genExpr (Eq e1 e2) env =
+  genExpr e1 env ++ "\n" ++
+  genExpr e2 env ++ "\n" ++
+  "  i32.eq"
+
+genExpr (Lt e1 e2) env =
+  genExpr e1 env ++ "\n" ++
+  genExpr e2 env ++ "\n" ++
+  "  i32.lt_s"  -- signed less than
+#+END_SRC
+
+* Geração de Código - Statements
+** Atribuição
+
+#+BEGIN_SRC haskell
+genStmt :: Stmt -> VarEnv -> String
+
+genStmt (Assign var expr) env =
+  genExpr expr env ++ "\n" ++
+  "  local.set $" ++ var
+#+END_SRC
+
+Exemplo:
+#+BEGIN_SRC
+x := 42;
+#+END_SRC
+
+Gera:
+#+BEGIN_SRC wasm
+  i32.const 42
+  local.set $x
+#+END_SRC
+
+** Condicional - Estrutura
+
+WebAssembly tem estruturas de controle estruturadas:
+
+#+BEGIN_SRC wasm
+(if (result i32)
+  (i32.const 1)        ;; condição
+  (then
+    (i32.const 42))    ;; ramo then
+  (else
+    (i32.const 0)))    ;; ramo else
+#+END_SRC
+
+** Condicional - Geração
+
+#+BEGIN_SRC haskell
+genStmt (If cond thenStmts elseStmts) env =
+  genExpr cond env ++ "\n" ++
+  "  (if\n" ++
+  "    (then\n" ++
+  concatMap (\s -> genStmt s env ++ "\n") thenStmts ++
+  "    )\n" ++
+  "    (else\n" ++
+  concatMap (\s -> genStmt s env ++ "\n") elseStmts ++
+  "    )\n" ++
+  "  )"
+#+END_SRC
+
+** Exemplo de Condicional
+
+Código fonte:
+#+BEGIN_SRC
+if x < 10 then
+  y := 1;
+else
+  y := 0;
+end
+#+END_SRC
+
+WebAssembly gerado:
+#+BEGIN_SRC wasm
+  local.get $x
+  i32.const 10
+  i32.lt_s
+  (if
+    (then
+      i32.const 1
+      local.set $y)
+    (else
+      i32.const 0
+      local.set $y))
+#+END_SRC
+
+** Loop While - Estrutura
+
+Loops em WebAssembly usam =block= e =loop=:
+
+#+BEGIN_SRC wasm
+(block $break
+  (loop $continue
+    ;; verificar condição
+    ;; se falso, br $break
+    ;; corpo do loop
+    br $continue))  ;; volta ao início
+#+END_SRC
+
+** Loop While - Geração
+
+#+BEGIN_SRC haskell
+genStmt (While cond body) env =
+  "  (block $break\n" ++
+  "    (loop $continue\n" ++
+  genExpr cond env ++ "\n" ++
+  "      i32.eqz\n" ++         -- inverte condição
+  "      br_if $break\n" ++    -- sai se falso
+  concatMap (\s -> genStmt s env ++ "\n") body ++
+  "      br $continue\n" ++
+  "    )\n" ++
+  "  )"
+#+END_SRC
+
+** Exemplo de While
+
+Código fonte:
+#+BEGIN_SRC
+i := 0;
+while i < 10 do
+  i := i + 1;
+end
+#+END_SRC
+
+** Exemplo de While
+
+WebAssembly gerado:
+#+BEGIN_SRC wasm
+  i32.const 0
+  local.set $i
+  (block $break
+    (loop $continue
+      local.get $i
+      i32.const 10
+      i32.lt_s
+      i32.eqz
+      br_if $break
+      local.get $i
+      i32.const 1
+      i32.add
+      local.set $i
+      br $continue))
+#+END_SRC
+
+* Console I/O
+** Importando Funções JavaScript
+
+WebAssembly não tem I/O nativo. Precisamos importar do host:
+
+#+BEGIN_SRC wasm
+(module
+  (import "console" "log" 
+    (func $log (param i32)))
+  (import "console" "read" 
+    (func $read (result i32)))
+  
+  ;; resto do código
+)
+#+END_SRC
+
+** Lado JavaScript - Setup
+
+#+BEGIN_SRC javascript
+const imports = {
+  console: {
+    log: (value) => console.log(value),
+    read: () => {
+      const input = prompt("Enter a number:");
+      return parseInt(input) || 0;
+    }
+  }
+};
+
+WebAssembly.instantiateStreaming(
+  fetch('program.wasm'), 
+  imports
+).then(result => {
+  result.instance.exports.main();
+});
+#+END_SRC
+
+** Print - Geração
+
+#+BEGIN_SRC haskell
+genStmt (Print expr) env =
+  genExpr expr env ++ "\n" ++
+  "  call $log"
+#+END_SRC
+
+Exemplo:
+#+BEGIN_SRC
+print(42);
+#+END_SRC
+
+Gera:
+#+BEGIN_SRC wasm
+  i32.const 42
+  call $log
+#+END_SRC
+
+** Read - Geração
+
+#+BEGIN_SRC haskell
+genStmt (Read var) env =
+  "  call $read\n" ++
+  "  local.set $" ++ var
+#+END_SRC
+
+Exemplo:
+#+BEGIN_SRC
+read(x);
+#+END_SRC
+
+Gera:
+#+BEGIN_SRC wasm
+  call $read
+  local.set $x
+#+END_SRC
+
+* Gerando o Módulo Completo
+** Análise de Variáveis
+
+Antes de gerar código, precisamos coletar todas as variáveis:
+
+#+BEGIN_SRC haskell
+collectVars :: [Stmt] -> [String]
+collectVars stmts = nub $ concatMap getVars stmts
+  where
+    getVars (Assign v _) = [v]
+    getVars (Read v) = [v]
+    getVars (If _ ts es) = 
+      collectVars ts ++ collectVars es
+    getVars (While _ body) = collectVars body
+    getVars (Print _) = []
+#+END_SRC
+
+** Declaração de Locais
+
+#+BEGIN_SRC haskell
+genLocals :: [String] -> String
+genLocals vars = unlines
+  [ "  (local $" ++ v ++ " i32)" 
+  | v <- vars ]
+#+END_SRC
+
+Gera:
+#+BEGIN_SRC wasm
+  (local $x i32)
+  (local $y i32)
+  (local $z i32)
+#+END_SRC
+
+** Módulo Completo
+
+#+BEGIN_SRC haskell
+genModule :: [Stmt] -> String
+genModule stmts = unlines
+  [ "(module"
+  , "  (import \"console\" \"log\" "
+  , "    (func $log (param i32)))"
+  , "  (import \"console\" \"read\" "
+  , "    (func $read (result i32)))"
+  , ""
+  , "  (func $main (export \"main\")"
+  , genLocals vars
+  , concatMap (`genStmt` env) stmts
+  , "  )"
+  , ")"
+  ]
+  where
+    vars = collectVars stmts
+    env = zip vars [0..]
+#+END_SRC
+
+* Exemplo Completo
+** Programa Fonte
+
+#+BEGIN_SRC
+read(n);
+sum := 0;
+i := 1;
+while i < n do
+  sum := sum + i;
+  i := i + 1;
+end
+print(sum);
+#+END_SRC
+
+Calcula a soma de 1 até n-1.
+
+** WebAssembly Gerado (1/2)
+
+#+BEGIN_SRC wasm
+(module
+  (import "console" "log" (func $log (param i32)))
+  (import "console" "read" (func $read (result i32)))
+  
+  (func $main (export "main")
+    (local $n i32)
+    (local $sum i32)
+    (local $i i32)
+    
+    ;; read(n)
+    call $read
+    local.set $n
+#+END_SRC
+
+** WebAssembly Gerado (2/2)
+
+#+BEGIN_SRC wasm
+    ;; sum := 0
+    i32.const 0
+    local.set $sum
+    
+    ;; i := 1
+    i32.const 1
+    local.set $i
+    
+    ;; while i < n
+    (block $break
+      (loop $continue
+        local.get $i
+        local.get $n
+        i32.lt_s
+        i32.eqz
+        br_if $break
+#+END_SRC
+
+** WebAssembly Gerado (3/3)
+
+#+BEGIN_SRC wasm
+        ;; sum := sum + i
+        local.get $sum
+        local.get $i
+        i32.add
+        local.set $sum
+        
+        ;; i := i + 1
+        local.get $i
+        i32.const 1
+        i32.add
+        local.set $i
+        
+        br $continue))
+    
+    ;; print(sum)
+    local.get $sum
+    call $log))
+#+END_SRC
+
+* Compilação e Execução
+** Ferramentas Necessárias
+
+Para trabalhar com WebAssembly:
+
+1. *wat2wasm*: Converte WAT para binário Wasm
+   - Parte do WABT (WebAssembly Binary Toolkit)
+   
+2. *wasm2wat*: Converte Wasm binário para WAT
+   
+3. *Node.js* ou *navegador*: Para executar
+
+** Compilando WAT para Wasm
+
+#+BEGIN_SRC bash
+# Instalar WABT
+# Ubuntu/Debian:
+sudo apt-get install wabt
+
+# macOS:
+brew install wabt
+
+# Compilar
+wat2wasm program.wat -o program.wasm
+#+END_SRC
+
+** Executando com Node.js
+
+#+BEGIN_SRC javascript
+// run.js
+const fs = require('fs');
+
+const imports = {
+  console: {
+    log: (x) => console.log('Output:', x),
+    read: () => {
+      // Simular input
+      return 10;
+    }
+  }
+};
+
+const wasmBuffer = fs.readFileSync('program.wasm');
+WebAssembly.instantiate(wasmBuffer, imports)
+  .then(result => {
+    result.instance.exports.main();
+  });
+#+END_SRC
+
+#+BEGIN_SRC bash
+node run.js
+#+END_SRC
+
+** Executando no Navegador
+
+#+BEGIN_SRC html
+<!DOCTYPE html>
+<html>
+<body>
+<script>
+const imports = {
+  console: {
+    log: (x) => console.log('Output:', x),
+    read: () => parseInt(prompt('Input:'))
+  }
+};
+
+fetch('program.wasm')
+  .then(response => response.arrayBuffer())
+  .then(bytes => WebAssembly.instantiate(bytes, imports))
+  .then(result => {
+    result.instance.exports.main();
+  });
+</script>
+</body>
+</html>
+#+END_SRC
+
+* WebAssembly System Interface (WASI)
+** O que é WASI?
+
+WASI permite que Wasm rode fora do navegador:
+- Acesso a sistema de arquivos
+- Variáveis de ambiente
+- Sockets de rede
+- Interface padronizada
+
+** Exemplo WASI
+
+#+BEGIN_SRC wasm
+(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) 
+                    (result i32)))
+  
+  ;; Escrever para stdout (fd=1)
+  ;; Requer setup de iovec na memória
+)
+#+END_SRC
+
+** Executando com WASI
+
+#+BEGIN_SRC bash
+# Compilar com suporte WASI
+# Executar
+wasmtime program.wasm
+
+# Ou com wasmer
+wasmer run program.wasm
+#+END_SRC
+
+* Casos de Uso
+** Aplicações Reais
+
+WebAssembly é usado em:
+
+1. *Jogos*: Unity, Unreal Engine
+2. *Editores*: Figma, AutoCAD
+3. *Compressão*: Squoosh (Google)
+4. *Criptografia*: Bibliotecas de segurança
+5. *Computação científica*: TensorFlow.js
+
+** Vantagens vs JavaScript
+
+| Aspecto       | JavaScript  | WebAssembly |
+|---------------+-------------+-------------|
+| Velocidade    | Rápido      | Muito rápido|
+| Tamanho       | Texto       | Binário compacto|
+| Parse         | Lento       | Muito rápido|
+| Otimização    | JIT         | AOT + JIT   |
+| Previsível    | Não         | Sim         |
+
+** Quando Usar WebAssembly?
+
+*Use Wasm quando:*
+- Performance é crítica
+- Já tem código C/C++/Rust
+- Computação pesada (crypto, codecs)
+- Quer portabilidade
+
+*Use JavaScript quando:*
+- Desenvolvimento rápido
+- Interação com DOM
+- Aplicações simples
+
+* Conclusão
+** Recapitulação
+
+Hoje aprendemos:
+
+1. ✓ O que é WebAssembly e sua arquitetura
+2. ✓ Formato de texto WAT
+3. ✓ Geração de código para expressões e statements
+4. ✓ Estruturas de controle (if, while)
+5. ✓ Compilação e execução

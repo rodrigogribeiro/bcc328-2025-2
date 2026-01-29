@@ -1,3 +1,5 @@
+#+TITLE: Closure Conversion
+#+Author: Construção de compiladores I
 #+OPTIONS: num:nil toc:nil
 #+OPTIONS: date:nil reveal_mathjax:t
 #+OPTIONS: tex t
@@ -7,10 +9,323 @@
 #+REVEAL_HLEVEL: 1
 #+REVEAL_ROOT: file:///home/rodrigo/reveal.js
 
-#+Title: Closure conversion
-#+Author: Construção de compiladores I
-
-
 * Objetivos
+** Objetivos
+- Apresentar como funções anônimas são compiladas em linguagens de programação.
 
+
+* Introdução
+** O que é Closure Conversion?
+
+- Transformação de funções anônimas em estruturas explícitas
+- Parte essencial da compilação de linguagens funcionais
+- Objetivo: eliminar funções aninhadas e captura de variáveis
+
+** Por que é necessária?
+
+- Máquinas não suportam naturalmente closures
+- Precisamos tornar explícito o *ambiente capturado*
+- Permite geração de código mais eficiente
+
+* Exemplo em Python
+** Código Python Original
+
+#+BEGIN_SRC python
+def make_adder(x):
+    def adder(y):
+        return x + y
+    return adder
+
+add_5 = make_adder(5)
+result = add_5(3)  # retorna 8
+#+END_SRC
+
+A função =adder= captura a variável =x= do escopo externo.
+
+** Após Closure Conversion
+
+#+BEGIN_SRC python
+# Função lifted com ambiente explícito
+def lambda_adder(env, y):
+    x = env['x']  # extrai x do ambiente
+    return x + y
+
+def make_adder(x):
+    # Cria closure explícita: tupla (função, ambiente)
+    closure = (lambda_adder, {'x': x})
+    return closure
+
+# Uso da closure
+add_5 = make_adder(5)
+func, env = add_5  # desempacota closure
+result = func(env, 3)  # passa ambiente explicitamente
+#+END_SRC
+
+* Linguagem Fonte
+** Sintaxe do Lambda Calculus
+
+#+BEGIN_SRC haskell
+data Expr 
+  = Var String           -- Variáveis
+  | Lam String Expr      -- λx. e
+  | App Expr Expr        -- e1 e2
+  | Let String Expr Expr -- let x = e1 in e2
+#+END_SRC
+
+** Exemplo Simples
+
+#+BEGIN_SRC haskell
+-- Função identidade
+let id = λx. x in id 5
+
+-- Função que retorna uma closure
+λx. λy. x
+#+END_SRC
+
+* Variáveis Livres
+** Conceito
+
+Uma variável é *livre* em uma expressão se:
+- Aparece na expressão
+- Não está ligada por um lambda ou let naquela expressão
+
+** Implementação
+
+#+BEGIN_SRC haskell
+freeVars :: Expr -> [String]
+freeVars (Var x) = [x]
+freeVars (Lam x body) = 
+  filter (/= x) (freeVars body)
+freeVars (App e1 e2) = 
+  nub (freeVars e1 ++ freeVars e2)
+freeVars (Let x e1 e2) = 
+  nub (freeVars e1 ++ filter (/= x) (freeVars e2))
+#+END_SRC
+
+** Exemplos de Variáveis Livres
+
+| Expressão | Variáveis Livres |
+|-----------+------------------|
+| =λx. x=   | =[ ]=            |
+| =λx. y=   | =[y]=            |
+| =λx. λy. x= | =[ ]=          |
+| =λx. λy. z= | =[z]=          |
+
+* Linguagem Alvo
+** Estruturas da Linguagem Alvo
+
+#+BEGIN_SRC haskell
+data CExpr
+  = CVar String
+  | CApp CExpr CExpr
+  | CClosure String [CExpr]  -- nome, vars capturadas
+  | CLet String CExpr CExpr
+#+END_SRC
+
+** Definições de Função
+
+#+BEGIN_SRC haskell
+data FunDef = FunDef
+  { funName :: String      -- nome único
+  , funFreeVars :: [String] -- ambiente capturado
+  , funParam :: String     -- parâmetro da função
+  , funBody :: CExpr       -- corpo convertido
+  }
+#+END_SRC
+
+** Programa Completo
+
+#+BEGIN_SRC haskell
+data Program = Program
+  { progFuns :: [FunDef]  -- funções de topo
+  , progMain :: CExpr     -- expressão principal
+  }
+#+END_SRC
+
+* Conversão de Closures
+** Transformação de Variáveis e Aplicações
+
+#+BEGIN_SRC haskell
+convert :: Expr -> [String] -> Gen (CExpr, [FunDef])
+
+convert (Var x) _ = 
+  return (CVar x, [])
+
+convert (App e1 e2) boundVars = do
+  (e1', funs1) <- convert e1 boundVars
+  (e2', funs2) <- convert e2 boundVars
+  return (CApp e1' e2', funs1 ++ funs2)
+#+END_SRC
+
+** Transformação de Lambdas
+
+#+BEGIN_SRC haskell
+convert (Lam param body) boundVars = do
+  fname <- freshName "lambda_"
+  let fvs = freeVars body \\ [param]
+  (body', bodyFuns) <- convert body (param : boundVars)
+  let funDef = FunDef fname fvs param body'
+  return (CClosure fname (map CVar fvs), 
+          funDef : bodyFuns)
+#+END_SRC
+
+** Transformação de Let
+
+#+BEGIN_SRC haskell
+convert (Let x e1 e2) boundVars = do
+  (e1', funs1) <- convert e1 boundVars
+  (e2', funs2) <- convert e2 (x : boundVars)
+  return (CLet x e1' e2', funs1 ++ funs2)
+#+END_SRC
+
+* Lambda Lifting
+** O que é Lambda Lifting?
+
+- Processo de mover todas as funções para o nível superior
+- Cada função aninhada se torna uma função de topo
+- Variáveis livres são passadas como parâmetros extras
+
+** Benefícios
+
+- Elimina funções aninhadas
+- Simplifica geração de código 
+- Facilita otimizações
+
+* Exemplos Práticos
+** Exemplo 1: Função Identidade
+
+*Entrada:*
+#+BEGIN_SRC haskell
+let id = λx. x in id 5
+#+END_SRC
+
+*Saída:*
+#+BEGIN_SRC haskell
+lambda_0(x) = x
+
+main = let id = <lambda_0[]> in (id 5)
+#+END_SRC
+
+** Exemplo 2: Closure Simples
+
+*Entrada:*
+#+BEGIN_SRC haskell
+λx. λy. x
+#+END_SRC
+
+*Saída:*
+#+BEGIN_SRC haskell
+lambda_1(x y) = x
+lambda_0(x) = <lambda_1[x]>
+
+main = <lambda_0[]>
+#+END_SRC
+
+Note que =lambda_1= captura =x=!
+
+** Exemplo 3: Closure com Let
+
+*Entrada:*
+#+BEGIN_SRC haskell
+(λx. let y = x in λz. y + z) 5
+#+END_SRC
+
+*Saída:*
+#+BEGIN_SRC haskell
+lambda_1(y z) = (+ y z)
+lambda_0(x) = let y = x in <lambda_1[y]>
+
+main = (<lambda_0[]> 5)
+#+END_SRC
+
+** Exemplo 4: Múltiplas Closures
+
+*Entrada:*
+#+BEGIN_SRC haskell
+let f = λx. λy. x + y in f 3
+#+END_SRC
+
+*Saída:*
+#+BEGIN_SRC haskell
+lambda_1(+ x y) = ((+ x) y)
+lambda_0(+ x) = <lambda_1[+ x]>
+
+main = let f = <lambda_0[+]> in (f 3)
+#+END_SRC
+
+* Geração de Nomes Únicos
+** Mônada State para Nomes
+
+#+BEGIN_SRC haskell
+newtype Gen a = Gen { unGen :: State Int a }
+  deriving (Functor, Applicative, Monad, 
+            MonadState Int)
+
+freshName :: String -> Gen String
+freshName prefix = do
+  n <- get
+  put (n + 1)
+  return $ prefix ++ show n
+#+END_SRC
+
+** Por que precisamos disso?
+
+- Cada lambda precisa de um nome único
+- Evita conflitos de nomes
+- Permite rastreamento de funções geradas
+
+* Detalhes de Implementação
+** Rastreamento de Variáveis Ligadas
+
+#+BEGIN_SRC haskell
+convert expr boundVars = ...
+#+END_SRC
+
+- =boundVars=: lista de variáveis atualmente no escopo
+- Atualizada ao entrar em lambdas e lets
+- Usada para calcular variáveis livres corretamente
+
+** Acumulação de Definições
+
+#+BEGIN_SRC haskell
+convert :: Expr -> [String] -> Gen (CExpr, [FunDef])
+#+END_SRC
+
+- Retorna tanto a expressão convertida quanto as funções geradas
+- Funções são acumuladas durante a recursão
+- No final, todas as funções são coletadas no =Program=
+
+* Extensões Possíveis
+** Melhorias no Código
+
+- Otimização: eliminar closures que não capturam variáveis
+- Análise de escape: determinar quando alocar na pilha vs heap
+- Inlining: expandir funções pequenas
+
+** Suporte a Mais Construções
+
+- Recursão e letrec
+- Tipos de dados algébricos
+- Pattern matching
+- Exceções
+
+* Conclusão
+** Resumo
+
+1. Conversão de closures torna explícita a captura de variáveis
+2. Lambda lifting move funções para o nível superior
+3. Essencial para compilação de linguagens funcionais
+4. Base para muitas otimizações
+
+** Recursos Adicionais
+
+- "Compiling with Continuations" - Andrew Appel
+- "Modern Compiler Implementation in ML" - Andrew Appel
+- "Types and Programming Languages" - Benjamin Pierce
+
+** Perguntas?
+
+#+BEGIN_CENTER
+Obrigado!
+#+END_CENTER
 

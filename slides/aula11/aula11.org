@@ -278,7 +278,7 @@ id * id \\
   - $J \leftarrow \emptyset$
   - Para cada item $A \to \alpha .X\beta \in I$
     - Adicione $A \to \alpha X.\beta$ a $J$.
-  - retorne $closure(J)$.
+  - retorne closure(J).
 
 ** Analisador LR(0)
 
@@ -326,7 +326,7 @@ id * id \\
 - se A[t,a] = reduce A \to \gamma
   - Desempilhe $|\gamma|$ itens.
   - Seja /p/ o topo da pilha
-  - empilhe G[t, A]
+  - empilhe G[p, A]
 
 ** Analisador LR(0)
 
